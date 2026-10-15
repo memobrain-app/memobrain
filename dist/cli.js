@@ -26,16 +26,20 @@ Claude Code keeps transcripts in ~/.claude/projects/<project>/<session>.jsonl.
 memobrain reads only the files it is given, writes only to stdout and stderr,
 and uses no network.
 
-It follows each session's live path: the branch the session ended on, joined
-across compactions and late-written error records. Every payload is replaced
-by an address (<first 8 chars of the file name>:L<line number>) and a hash.
+It follows each session's live path: the branch the session ended on, as the
+transcript's own last-prompt record names it (without one, the deepest branch),
+joined across compactions and late-written error records. Every payload is
+replaced by an address and a hash. An address is <prefix>:L<line number>: the
+prefix is the file name's first 8 characters, or, for a subagent's
+agent-<id>.jsonl, agent- and the id's first 8.
 
 skeleton, one line per turn:
   k             "turn"
   a             address of the prompt
-  ta            turn id: <first 8 chars of the file name>:T001, T002, ...
+  ta            turn id: <prefix>:T001, T002, ...
   ch            channel the prompt came through: typed, sdk, input, task,
                 loop, parent, or the record's own word for another agent
+                (for example peer)
   n             length of the prompt text (JavaScript string length)
 
 skeleton, one line per tool call, after the turn it belongs to:
@@ -43,36 +47,52 @@ skeleton, one line per tool call, after the turn it belongs to:
   a             address of the tool call
   ta            the turn it belongs to
   tool          tool name
-  verb          Bash: the command's first word; Read, Edit, Write: the file's
-                extension (its name when it has none); Agent, Task: the
-                subagent type; Skill: the skill name; other tools: the name
+  verb          a short label for what the call did. Bash: the program in
+                command position, after any cd DIR followed by && ; or a
+                newline, NAME=value assignments, and the wrappers env, time,
+                command, builtin, exec, nohup, nice and timeout (with their
+                options); a path is cut to its last part, and a command that
+                only assigns values is labelled by the command inside its
+                first $(...). Read, Edit, Write, NotebookEdit: the file's
+                extension (its name when it has none). Agent, Task: the
+                subagent type. Skill: the skill name. Other tools: the name
   in            sha256 of the input as JSON (a missing input counts as {}),
                 first 12 hex characters
-  ok            false when the call failed
+  ok            true when the call succeeded, false when it failed, null when
+                no result was recorded (the session ended, or the file was
+                cut, before the call returned)
   ek            error class, only when the call failed: hook-block:<hook
                 script name>, hook-block, no-anchor, not-read, exit-<code>,
                 bad-input, denied, other
   r             address of the result, or null when none was recorded
-  out           sha256 of the result text, first 12 hex characters
-  n             length of the result text (JavaScript string length)
+  out           sha256 of the result text, first 12 hex characters (null when
+                no result was recorded)
+  n             length of the result text, JavaScript string length (null
+                when no result was recorded)
+
+A label (tool, verb, ch) is printed only when it looks like one: at most 64
+letters, digits and . _ : + -. Anything else prints as (withheld).
 
 stats, one line per file:
-  session       first 8 characters of the file name
+  session       the file's address prefix
   turns         turns on the live path
   prompts       turns opened by a prompt (channel typed, sdk or input)
   calls         tool calls
   failures      tool calls that failed
+  unanswered    tool calls with no recorded result
   errorClasses  failures by error class
-  retries       calls right after a failure, with the same tool
-  detours       calls right after a failure, with a different tool
+  retries       calls right after a failed call in the same turn, with the
+                same tool
+  detours       calls right after a failed call in the same turn, with a
+                different tool
   maxHops       the longest chain of failures with one verb that a later
                 success with that verb closed in the same turn, counting
                 the success
   hopsOver2     chains of more than 2 hops
 
-Warnings go to stderr: lines that are not JSON objects, and files with nothing
-to show (empty, a workflow journal, no conversation records, no turns), so a
-zero never reads as a clean result.
+Warnings go to stderr: lines that are not JSON objects, files with nothing to
+show (empty, a workflow journal, no conversation records, no turns), and
+records whose parent links loop, so a zero never reads as a clean result.
 
 Exit status: 0 when every file was processed, 1 when a file could not be read
 or processed, 2 on a usage error.
@@ -80,28 +100,251 @@ or processed, 2 on a usage error.
 const TRANSCRIPTS_HINT = 'Claude Code keeps transcripts in ~/.claude/projects/<project>/<session>.jsonl.';
 const h12 = (s) => createHash('sha256').update(s).digest('hex').slice(0, 12);
 const pad3 = (n) => String(n).padStart(3, '0');
+/** Every label printed from a transcript (tool, verb, channel) must LOOK like a label: letters, digits
+ *  and . _ : + -, at most 64 characters. Anything else is a value that may carry payload, and prints
+ *  as (withheld). */
+const LABEL = /^[\w.:+-]{1,64}$/;
+const WITHHELD = '(withheld)';
+const label = (v, fallback) => (!v ? fallback : typeof v === 'string' && LABEL.test(v) ? v : WITHHELD);
+function skipQuoted(s, j, close) {
+    while (j < s.length) {
+        const c = s[j];
+        if (c === '\\' && close !== "'") {
+            j += 2;
+            continue;
+        }
+        if (c === close)
+            return j + 1;
+        if (close === '"' && c === '$' && s[j + 1] === '(') {
+            j = skipParen(s, j + 2);
+            continue;
+        }
+        if (close === '"' && c === '`') {
+            j = skipQuoted(s, j + 1, '`');
+            continue;
+        }
+        j++;
+    }
+    return s.length;
+}
+/** From just after "$(" (or "${" with open "{"), the index just after the matching close. */
+function skipParen(s, j, open = '(', close = ')') {
+    let depth = 1;
+    while (j < s.length) {
+        const c = s[j];
+        if (c === '\\') {
+            j += 2;
+            continue;
+        }
+        if (c === "'" || c === '"' || c === '`') {
+            j = skipQuoted(s, j + 1, c);
+            continue;
+        }
+        if (c === open)
+            depth++;
+        else if (c === close && --depth === 0)
+            return j + 1;
+        j++;
+    }
+    return s.length;
+}
+/** The first tokens of a command line: words, and the operators between them. */
+function lex(s, max = 64) {
+    const toks = [];
+    let i = 0;
+    while (i < s.length && toks.length < max) {
+        const c = s[i];
+        if (c === ' ' || c === '\t' || c === '\r') {
+            i++;
+            continue;
+        }
+        if (c === '\\' && s[i + 1] === '\n') {
+            i += 2;
+            continue;
+        }
+        if (c === '\n') {
+            toks.push({ op: '\n' });
+            i++;
+            continue;
+        }
+        if (c === '#') {
+            while (i < s.length && s[i] !== '\n')
+                i++;
+            continue;
+        }
+        const two = s.slice(i, i + 2);
+        if (two === '&&' || two === '||') {
+            toks.push({ op: two });
+            i += 2;
+            continue;
+        }
+        if (c === '<' || c === '>') {
+            let j = i;
+            while (j < s.length && '<>&|'.includes(s[j]))
+                j++;
+            toks.push({ op: '<' });
+            i = j;
+            continue;
+        }
+        if (';&|()'.includes(c)) {
+            toks.push({ op: c });
+            i++;
+            continue;
+        }
+        let j = i, plain = true;
+        while (j < s.length) {
+            const d = s[j];
+            if (d === '(' && /^[A-Za-z_]\w*\+?=$/.test(s.slice(i, j))) {
+                plain = false;
+                j = skipParen(s, j + 1);
+                continue;
+            } // NAME=(array)
+            if (' \t\r\n;&|()<>'.includes(d))
+                break;
+            if (d === '\\') {
+                plain = false;
+                j += 2;
+                continue;
+            }
+            if (d === "'" || d === '"' || d === '`') {
+                plain = false;
+                j = skipQuoted(s, j + 1, d);
+                continue;
+            }
+            if (d === '$' && s[j + 1] === '(') {
+                plain = false;
+                j = skipParen(s, j + 2);
+                continue;
+            }
+            if (d === '$' && s[j + 1] === '{') {
+                plain = false;
+                j = skipParen(s, j + 2, '{', '}');
+                continue;
+            }
+            if ('$*?['.includes(d))
+                plain = false;
+            j++;
+        }
+        toks.push({ word: s.slice(i, j), plain });
+        i = j;
+    }
+    return toks;
+}
+/** The text inside the first $(...) or `...` of an assignment's value (single quotes are literal). */
+function firstSubstitution(w) {
+    for (let j = w.indexOf('=') + 1; j < w.length; j++) {
+        const c = w[j];
+        if (c === '\\') {
+            j++;
+            continue;
+        }
+        if (c === "'") {
+            j = skipQuoted(w, j + 1, "'") - 1;
+            continue;
+        }
+        if (c === '$' && w[j + 1] === '(' && w[j + 2] !== '(')
+            return w.slice(j + 2, skipParen(w, j + 2) - 1);
+        if (c === '`')
+            return w.slice(j + 1, skipQuoted(w, j + 1, '`') - 1);
+    }
+    return undefined;
+}
+const ASSIGNMENT = /^[A-Za-z_]\w*(?:\[[^\]]*\])?\+?=/;
+/** Wrappers that run the command after them, and the options of theirs that take an argument. */
+const WRAPPERS = {
+    env: ['-u', '--unset', '-C', '--chdir', '-S', '--split-string'], time: [], command: [], builtin: [],
+    exec: ['-a'], nohup: [], nice: ['-n', '--adjustment'], timeout: ['-s', '--signal', '-k', '--kill-after'],
+};
+/** The program a command word names: its last path part, when that part is a literal label. Quotes
+ *  around a literal word are not part of the name; an expansion in the directory part does not
+ *  matter (`$DIR/run.sh` is run.sh), anywhere else it withholds the word. */
+function commandLabel(w) {
+    if (w === '[' || w === '[[')
+        return w;
+    const last = w.slice(w.lastIndexOf('/') + 1);
+    return /[$`\\]/.test(last) ? WITHHELD : label(last.replace(/["']/g, ''), WITHHELD);
+}
+/** Bash: the first word in command position. Passed over on the way: separators, `!`, `{`, `(`,
+ *  redirections, `cd DIR` followed by && ; or a newline, `NAME=value` assignments, and the
+ *  wrappers above with their options (and timeout's duration). A command that only assigns values
+ *  is labelled by the command inside its first $(...) or `...`. `[` and `[[` are labels of their own. */
+function bashVerb(command, depth = 0) {
+    const toks = lex(command);
+    const redirection = (x) => x !== undefined && 'op' in x && x.op === '<';
+    let k = 0, sub;
+    while (k < toks.length) {
+        const t = toks[k];
+        if ('op' in t) {
+            k += t.op === '<' ? 2 : 1;
+            continue;
+        } // a redirection's target goes with it
+        const w = t.word;
+        if (w === '!' || w === '{') {
+            k++;
+            continue;
+        }
+        if (/^\d+$/.test(w) && redirection(toks[k + 1])) {
+            k += 3;
+            continue;
+        }
+        if (ASSIGNMENT.test(w)) {
+            sub ??= firstSubstitution(w);
+            k++;
+            continue;
+        }
+        if (w === 'cd') {
+            let m = k + 1;
+            while (m < toks.length && ('word' in toks[m] || redirection(toks[m])))
+                m += redirection(toks[m]) ? 2 : 1;
+            const sep = toks[m];
+            if (sep && 'op' in sep && (sep.op === '&&' || sep.op === ';' || sep.op === '\n')) {
+                k = m + 1;
+                continue;
+            }
+            return 'cd';
+        }
+        if (t.plain && Object.hasOwn(WRAPPERS, w)) {
+            const withArg = WRAPPERS[w];
+            k++;
+            while (k < toks.length && 'word' in toks[k]) {
+                const o = toks[k].word;
+                if (o.startsWith('-')) {
+                    k += withArg.includes(o) ? 2 : 1;
+                    continue;
+                }
+                if (w === 'env' && ASSIGNMENT.test(o)) {
+                    k++;
+                    continue;
+                }
+                break;
+            }
+            if (w === 'timeout' && k < toks.length && 'word' in toks[k])
+                k++; // the duration
+            continue;
+        }
+        return commandLabel(w);
+    }
+    if (sub !== undefined && depth < 3)
+        return bashVerb(sub, depth + 1);
+    return '(empty)';
+}
 /** A short label for what a call did, read from its input; the input itself is never printed.
- *  Bash: the command's first word, after any `cd ... &&`, `VAR=...`, `timeout N`, `nice N`, `env`,
- *  `time`, `command`, `exec` and `nohup`. Read, Edit, Write, NotebookEdit: the file's extension, or
- *  its name when it has none. Agent, Task: the subagent type. Skill: the skill. Else the tool's name. */
+ *  Bash: see bashVerb. Read, Edit, Write, NotebookEdit: the file's extension, or its name when it
+ *  has none (a path is cut at / and at \). Agent, Task: the subagent type. Skill: the skill. Else
+ *  the tool's name. Every label passes LABEL or prints as (withheld). */
 function verbOf(tool, input) {
     const inp = input ?? {};
-    if (tool === 'Bash') {
-        let c = String(inp.command || '').trim().replace(/^(?:cd\s+[^;&|]+&&\s*)+/, '');
-        for (let m; (m = /^(?:[A-Za-z_]\w*=(?:'[^']*'|"[^"]*"|\S*)\s+|(?:timeout|nice)\s+-?\S+\s+|(?:env|time|command|exec|nohup)\s+)/.exec(c));)
-            c = c.slice(m[0].length);
-        const w = (/^[^\s;&|()<>]+/.exec(c) || [''])[0];
-        return w ? basename(w) : '(empty)';
-    }
+    if (tool === 'Bash')
+        return bashVerb(String(inp.command || ''));
     if (['Read', 'Edit', 'Write', 'NotebookEdit'].includes(tool)) {
-        const p = String(inp.file_path || inp.notebook_path || '');
-        return extname(p) || basename(p) || '(none)';
+        const name = String(inp.file_path || inp.notebook_path || '').split(/[\\/]/).pop() || '';
+        return label(extname(name) || name, '(none)');
     }
     if (tool === 'Agent' || tool === 'Task')
-        return inp.subagent_type || 'agent';
+        return label(inp.subagent_type, 'agent');
     if (tool === 'Skill')
-        return inp.skill || 'skill';
-    return tool;
+        return label(inp.skill, 'skill');
+    return label(tool, WITHHELD);
 }
 /** A failed call's error CLASS, by fixed rules over the result text: a label, never the text.
  *  A hook block carries the hook script's name (without its extension): a label, not payload. */
@@ -127,28 +370,38 @@ function errorClass(text) {
 /** Content as one string: a string as it is; an array of blocks as their texts joined by newlines. */
 const flat = (c) => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => (typeof x === 'string' ? x : x?.text ?? '')).join('\n') : '');
 const promptLen = (rec) => flat(rec?.message?.content).length;
-/** One line per input turn and per tool call on the live path, in path order. */
+/** The address prefix: the file name's first 8 characters. A subagent's transcript is named
+ *  agent-<id>.jsonl, and those names share their first 8 characters, so there it is agent- and the
+ *  id's first 8. */
+function prefixOf(file) {
+    const name = basename(file);
+    return name.startsWith('agent-') ? `agent-${name.slice(6, 14)}` : name.slice(0, 8);
+}
+/** One line per input turn and per tool call on the live path, in path order. A call whose result
+ *  was never recorded has ok, r, out and n null. */
 function skeletonOf(file, t) {
-    const sid8 = basename(file).slice(0, 8);
-    const at = (n) => `${sid8}:L${t.positions[n.index].line}`;
+    const pre = prefixOf(file);
+    const at = (n) => `${pre}:L${t.positions[n.index].line}`;
     const turns = turnsOf(t, repairedLivePath(t).path);
     const lines = [];
     for (let i = 0; i < turns.length; i++) {
-        const turn = turns[i], ta = `${sid8}:T${pad3(i + 1)}`;
-        lines.push({ k: 'turn', a: at(turn.prompt), ta, ch: inputChannel(turn.prompt.record) ?? 'none', n: promptLen(turn.prompt.record) });
+        const turn = turns[i], ta = `${pre}:T${pad3(i + 1)}`;
+        lines.push({ k: 'turn', a: at(turn.prompt), ta, ch: label(inputChannel(turn.prompt.record), 'none'), n: promptLen(turn.prompt.record) });
         for (const c of turn.toolCalls) {
-            const rt = flat(c.resultBlock?.content);
-            lines.push({ k: 'call', a: at(c.callNode), ta, tool: c.name, verb: verbOf(c.name, c.input),
-                in: h12(JSON.stringify(c.input ?? {})), ok: !c.isError, ek: c.isError ? errorClass(rt) : undefined,
-                r: c.resultNode ? at(c.resultNode) : null, out: h12(rt), n: rt.length });
+            const answered = c.resultBlock !== undefined, rt = flat(c.resultBlock?.content);
+            lines.push({ k: 'call', a: at(c.callNode), ta, tool: label(c.name, WITHHELD), verb: verbOf(c.name, c.input),
+                in: h12(JSON.stringify(c.input ?? {})), ok: answered ? !c.isError : null, ek: answered && c.isError ? errorClass(rt) : undefined,
+                r: c.resultNode ? at(c.resultNode) : null, out: answered ? h12(rt) : null, n: answered ? rt.length : null });
         }
     }
     return lines;
 }
 /** The skeleton's shapes, counted: what follows a failed call, and how many calls a chain of
- *  failures with one verb took to come good. Chains are counted within a turn. */
+ *  failures with one verb took to come good. Everything is counted within a turn. A call with no
+ *  recorded result is neither a failure nor a success: it is counted as unanswered and leaves a
+ *  chain as it was. */
 function statsOf(file, lines) {
-    const s = { session: basename(file).slice(0, 8), turns: 0, prompts: 0, calls: 0, failures: 0, errorClasses: {}, retries: 0, detours: 0, maxHops: 0, hopsOver2: 0 };
+    const s = { session: prefixOf(file), turns: 0, prompts: 0, calls: 0, failures: 0, unanswered: 0, errorClasses: {}, retries: 0, detours: 0, maxHops: 0, hopsOver2: 0 };
     let prev = null, run = 0, runVerb = null;
     for (const r of lines) {
         if (r.k === 'turn') {
@@ -161,22 +414,24 @@ function statsOf(file, lines) {
             continue;
         }
         s.calls++;
-        if (!r.ok) {
+        if (r.ok === null)
+            s.unanswered++;
+        if (r.ok === false) {
             const ek = r.ek ?? 'other';
             s.failures++;
             s.errorClasses[ek] = (s.errorClasses[ek] || 0) + 1;
         }
-        if (prev && !prev.ok) {
+        if (prev && prev.ok === false) {
             if (r.tool === prev.tool)
                 s.retries++;
             else
                 s.detours++;
         }
-        if (!r.ok) {
+        if (r.ok === false) {
             run = r.verb === runVerb ? run + 1 : 1;
             runVerb = r.verb;
         }
-        else if (r.verb === runVerb && run) {
+        else if (r.ok === true && r.verb === runVerb && run) {
             s.maxHops = Math.max(s.maxHops, run + 1);
             if (run + 1 > 2)
                 s.hopsOver2++;
@@ -186,6 +441,18 @@ function statsOf(file, lines) {
         prev = r;
     }
     return s;
+}
+/** Records reachable from no root and no orphan: they sit on a parentUuid cycle, or below one. */
+function cycleRecords(t) {
+    const seen = new Set(), stack = [...t.roots, ...t.orphans];
+    while (stack.length) {
+        const n = stack.pop();
+        if (seen.has(n))
+            continue;
+        seen.add(n);
+        stack.push(...n.children);
+    }
+    return t.nodes.size - seen.size;
 }
 /** Why a file that parsed still has nothing to show, so a zero never reads as a clean result. */
 function warningsFor(cmd, file, t, lineCount) {
@@ -197,7 +464,7 @@ function warningsFor(cmd, file, t, lineCount) {
     if (t.fileKind === 'empty')
         warnings.push(`memobrain ${cmd}: warning: '${file}' holds no records, so ${consequence}.`);
     else if (t.fileKind === 'journal')
-        warnings.push(`memobrain ${cmd}: warning: '${file}' is a workflow journal (started and result records only), not a conversation, so ${consequence}.`);
+        warnings.push(`memobrain ${cmd}: warning: '${file}' is a workflow journal (launched, started and result records only), not a conversation, so ${consequence}.`);
     else if (t.fileKind === 'unknown') {
         const types = [...new Set(t.records.map((r) => (typeof r.type === 'string' ? r.type : '(none)')))].sort();
         const shown = types.slice(0, 6).join(', ') + (types.length > 6 ? `, and ${types.length - 6} more` : '');
@@ -205,6 +472,9 @@ function warningsFor(cmd, file, t, lineCount) {
     }
     else if (lineCount === 0)
         warnings.push(`memobrain ${cmd}: warning: '${file}' has conversation records but no turn on its live path, so ${consequence}.`);
+    const c = t.fileKind === 'transcript' ? cycleRecords(t) : 0;
+    if (c)
+        warnings.push(`memobrain ${cmd}: warning: '${file}': ${c} record${c === 1 ? '' : 's'} sit${c === 1 ? 's' : ''} on a parentUuid cycle or below one (following the parent links never reaches the start of the session), so the live path through ${c === 1 ? 'it' : 'them'} may be incomplete.`);
     return warnings;
 }
 function cannotRead(cmd, file, e) {

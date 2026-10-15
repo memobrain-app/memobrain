@@ -451,7 +451,7 @@ export function parseTranscript(text, opts = {}) {
             liveLeafUuid = r.leafUuid;
     const fileKind = nodes.size > 0 ? 'transcript'
         : records.length === 0 ? 'empty'
-            : records.every((r) => r.type === 'started' || r.type === 'result') ? 'journal'
+            : records.every((r) => r.type === 'launched' || r.type === 'started' || r.type === 'result') ? 'journal'
                 : 'unknown';
     return { fileKind, records, positions, nodes, roots, orphans, sidecars, problems, requests, toolCalls, liveLeafUuid, stats };
 }
@@ -495,12 +495,17 @@ export function repairedLivePath(t) {
     //    last `last-prompt` record was written before the session's final exchange, which then sits
     //    below it. A leaf with children is not a leaf, so the signal is unambiguous; the path is
     //    extended to the LAST-WRITTEN descendant.
+    //    Every walk down the tree below visits each node once: a parentUuid cycle (corrupt or
+    //    hand-edited input) would otherwise make it endless.
     const tip = path[path.length - 1];
     if (tip && tip.children.length) {
         let last = tip, n = 0;
-        const st = [...tip.children];
+        const st = [...tip.children], seen = new Set([tip]);
         while (st.length) {
             const x = st.pop();
+            if (seen.has(x))
+                continue;
+            seen.add(x);
             n++;
             if (x.index > last.index)
                 last = x;
@@ -544,9 +549,12 @@ export function repairedLivePath(t) {
             //   compaction has none, so there the tip is the logical parent and nothing changes.
             if (!inPath.has(logical.uuid) && logical.index < head.index) {
                 let tip = logical;
-                const st = [...logical.children];
+                const st = [...logical.children], seen = new Set([logical]);
                 while (st.length) {
                     const x = st.pop();
+                    if (seen.has(x))
+                        continue;
+                    seen.add(x);
                     if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid))
                         tip = x;
                     st.push(...x.children);
@@ -562,9 +570,12 @@ export function repairedLivePath(t) {
             const hd = typeof m.preservedSegment?.headUuid === 'string' ? t.nodes.get(m.preservedSegment.headUuid) : undefined;
             if (hd && !inPath.has(hd.uuid) && hd.index < head.index) {
                 let tip = hd;
-                const st = [...hd.children];
+                const st = [...hd.children], seen = new Set([hd]);
                 while (st.length) {
                     const x = st.pop();
+                    if (seen.has(x))
+                        continue;
+                    seen.add(x);
                     if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid))
                         tip = x;
                     st.push(...x.children);
@@ -601,9 +612,12 @@ export function repairedLivePath(t) {
         if (!P || E.parent !== P || P.children.length < 2)
             continue;
         let last = null;
-        const stack = P.children.filter((c) => c !== E);
+        const stack = P.children.filter((c) => c !== E), seen = new Set([P, E]);
         while (stack.length) {
             const x = stack.pop();
+            if (seen.has(x))
+                continue;
+            seen.add(x);
             if (x.index < E.index && (!last || x.index > last.index))
                 last = x;
             stack.push(...x.children);

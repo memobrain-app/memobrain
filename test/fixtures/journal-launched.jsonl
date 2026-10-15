@@ -1,0 +1,3 @@
+{"type":"launched"}
+{"type":"started","key":"v2:0000000000000000000000000000000000000000000000000000000000000002","agentId":"demo-agent-2","label":"invented label","phase":"invented phase"}
+{"type":"result","key":"v2:0000000000000000000000000000000000000000000000000000000000000002","agentId":"demo-agent-2","result":"invented result text"}

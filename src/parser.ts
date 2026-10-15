@@ -70,7 +70,7 @@ export type RecordType = Open<
   | 'assistant' | 'user' | 'attachment' | 'system'
   | 'queue-operation' | 'last-prompt' | 'ai-title' | 'bridge-session'
   | 'atis-latch' | 'mode' | 'file-history-snapshot' | 'file-history-delta'
-  | 'started' | 'result' | 'frame-link'
+  | 'launched' | 'started' | 'result' | 'frame-link'
   | 'artifact-autoreact-ledger' | 'permission-mode' | 'artifact-comment-monitor'
 >;
 
@@ -277,7 +277,8 @@ export interface ToolCall {
  *  one of them is a conversation:
  *    - `transcript`: envelope-bearing records, one root each. The tree.
  *    - `journal`: <session>/subagents/workflows/wf_<id>/journal.jsonl, with
- *      ZERO envelope records; every record is `started`/`result` carrying the
+ *      ZERO envelope records: newer journals open with one `launched` record,
+ *      and every other record is `started`/`result` carrying the
  *      content-addressed key `v2:<sha256>` that lets a workflow resume replay a
  *      completed agent instead of re-running it.
  *  A journal parses to an EMPTY forest, and that is the correct answer, not a
@@ -706,7 +707,7 @@ export function parseTranscript(text: string, opts: ParseOptions = {}): Transcri
   const fileKind: FileKind =
     nodes.size > 0 ? 'transcript'
     : records.length === 0 ? 'empty'
-    : records.every((r) => r.type === 'started' || r.type === 'result') ? 'journal'
+    : records.every((r) => r.type === 'launched' || r.type === 'started' || r.type === 'result') ? 'journal'
     : 'unknown';
 
   return { fileKind, records, positions, nodes, roots, orphans, sidecars, problems, requests, toolCalls, liveLeafUuid, stats };
@@ -801,11 +802,13 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
   //    last `last-prompt` record was written before the session's final exchange, which then sits
   //    below it. A leaf with children is not a leaf, so the signal is unambiguous; the path is
   //    extended to the LAST-WRITTEN descendant.
+  //    Every walk down the tree below visits each node once: a parentUuid cycle (corrupt or
+  //    hand-edited input) would otherwise make it endless.
   const tip = path[path.length - 1];
   if (tip && tip.children.length) {
     let last: TreeNode = tip, n = 0;
-    const st = [...tip.children];
-    while (st.length) { const x = st.pop()!; n++; if (x.index > last.index) last = x; st.push(...x.children); }
+    const st = [...tip.children], seen = new Set<TreeNode>([tip]);
+    while (st.length) { const x = st.pop()!; if (seen.has(x)) continue; seen.add(x); n++; if (x.index > last.index) last = x; st.push(...x.children); }
     extension = { leaf: tip, to: last, records: n, kind: 'stale-head' };
     path = pathTo(t, last.uuid);
   }
@@ -843,8 +846,8 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
       //   So continue from its last-written descendant that precedes the boundary. A full
       //   compaction has none, so there the tip is the logical parent and nothing changes.
       if (!inPath.has(logical.uuid) && logical.index < head.index) {
-        let tip = logical; const st = [...logical.children];
-        while (st.length) { const x = st.pop()!; if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid)) tip = x; st.push(...x.children); }
+        let tip = logical; const st = [...logical.children], seen = new Set<TreeNode>([logical]);
+        while (st.length) { const x = st.pop()!; if (seen.has(x)) continue; seen.add(x); if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid)) tip = x; st.push(...x.children); }
         join(tip, 'logical-parent');
         continue;
       }
@@ -855,8 +858,8 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
       //   descendant of the head that PRECEDES the boundary.
       const hd = typeof m.preservedSegment?.headUuid === 'string' ? t.nodes.get(m.preservedSegment.headUuid) : undefined;
       if (hd && !inPath.has(hd.uuid) && hd.index < head.index) {
-        let tip = hd; const st = [...hd.children];
-        while (st.length) { const x = st.pop()!; if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid)) tip = x; st.push(...x.children); }
+        let tip = hd; const st = [...hd.children], seen = new Set<TreeNode>([hd]);
+        while (st.length) { const x = st.pop()!; if (seen.has(x)) continue; seen.add(x); if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid)) tip = x; st.push(...x.children); }
         join(tip, 'preserved-head');
         continue;
       }
@@ -884,9 +887,11 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
     const r: any = E.record;
     if (!P || E.parent !== P || P.children.length < 2) continue;
     let last: TreeNode | null = null;
-    const stack = P.children.filter((c) => c !== E);
+    const stack = P.children.filter((c) => c !== E), seen = new Set<TreeNode>([P, E]);
     while (stack.length) {
       const x = stack.pop()!;
+      if (seen.has(x)) continue;
+      seen.add(x);
       if (x.index < E.index && (!last || x.index > last.index)) last = x;
       stack.push(...x.children);
     }
