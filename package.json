@@ -1,0 +1,37 @@
+{
+  "name": "memobrain",
+  "version": "0.0.1",
+  "description": "Show the structure of Claude Code session transcripts without their content: every turn and tool call as an address and a hash.",
+  "type": "module",
+  "bin": {
+    "memobrain": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
+    "test": "node --test test/cli.test.mjs"
+  },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "transcript",
+    "jsonl",
+    "session",
+    "skeleton",
+    "privacy",
+    "cli"
+  ],
+  "author": "Ohav",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "20.17.10",
+    "typescript": "5.7.2"
+  }
+}
