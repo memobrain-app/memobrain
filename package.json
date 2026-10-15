@@ -28,10 +28,18 @@
     "privacy",
     "cli"
   ],
-  "author": "Ohav",
+  "author": "Ohav Ben Yanai",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "20.17.10",
     "typescript": "5.7.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/memobrain-app/memobrain.git"
+  },
+  "homepage": "https://memobrain.app",
+  "bugs": {
+    "url": "https://github.com/memobrain-app/memobrain/issues"
   }
 }

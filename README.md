@@ -16,7 +16,7 @@ Or install it once: `npm install -g memobrain`.
 
 ### `memobrain skeleton <file.jsonl>...`
 
-One JSON line per turn and per tool call. A turn starts at a prompt; its tool calls follow it in order. This is one turn of the synthetic test transcript [`test/fixtures/demo.jsonl`](test/fixtures/demo.jsonl): a hook blocks a command, the tests fail twice, a fix is made, the tests pass.
+One JSON line per turn and per tool call. A turn starts at a prompt; its tool calls follow it in order. This is one turn of the synthetic test transcript [`test/fixtures/demo.jsonl`](https://github.com/memobrain-app/memobrain/blob/main/test/fixtures/demo.jsonl): a hook blocks a command, the tests fail twice, a fix is made, the tests pass.
 
 ```
 {"k":"turn","a":"demo.jso:L20","ta":"demo.jso:T003","ch":"typed","n":47}
