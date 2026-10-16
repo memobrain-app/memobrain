@@ -1,5 +1,7 @@
-// Writes the generated test fixtures: labels.jsonl, unanswered.jsonl, cycle.jsonl, rare-shapes.jsonl and
-// journal-launched.jsonl. Every string in them is invented; the record format follows the hand-written
+// Writes the generated test fixtures (each is introduced by a comment below: labels, unanswered, cycle, rare-shapes,
+// journal-launched, lexer, labels2, errors, parallel, compacted, stale-head, retried3, orphan-first, the cycle-* three,
+// content, parallel-msgid, request-two-turns, errors2, unicode, types-only).
+// Every string in them is invented; the record format follows the hand-written
 // fixtures (edges.jsonl). The output is the same on every run.
 //
 //   node test/make-fixtures.mjs test/fixtures
@@ -141,23 +143,23 @@ const LEXER_CASES = [
   // [command, expected verb]
   ["MSG=$(cat <<'EOF'\nTwo invented fixes:\n1) ZQXA01 parser guard\nEOF\n)\ngit commit -m \"$MSG\"", '(withheld)'],
   ['exec 3<<EOF\nZQXA02 invented secret\nEOF\ncat <&3', '(withheld)'],
-  ['cd /work/demo-project <<EOF\nZQXA03 body word\nEOF', '(withheld)'],
+  ['cd /work/demo-project <<EOF\nZQXA03 body word\nEOF', 'cd'],
   ['<<EOF\nZQXA04 body\nEOF', '(withheld)'],
-  ["X=$'a\\' ZQXA05 b'", '(empty)'],
-  ['NAME="${NAME:-"Invented ZQXA06 Person"}" ./run.sh', 'run.sh'],
-  ["X=$(echo a # a comment with ) and 'ZQXA07\n)\nmake demo", 'make'],
+  ["X=$'a\\' ZQXA05 b'", '(withheld)'],
+  ['NAME="${NAME:-"Invented ZQXA06 Person"}" ./run.sh', '(withheld)'],
+  ["X=$(echo a # a comment with ) and 'ZQXA07\n)\nmake demo", '(withheld)'],
   ['X=$(case $y in a) echo ZQXA08;; esac)', '(withheld)'],
   ['((ZQXA09++))', '(withheld)'],
-  ['X=$[ZQXA10+1]', '(empty)'],
+  ['X=$[ZQXA10+1]', '(withheld)'],
   ["X='$(ZQXA11 invented)'", '(empty)'],
-  ['X="it\'s $(date +%s)"', 'date'],
-  ['command time -o payroll-ZQXA12.txt make demo', 'make'],
-  ['env -P /opt/ZQXA13/bin make demo', 'make'],
+  ['X="it\'s $(date +%s)"', '(withheld)'],
+  ['command time -o payroll-ZQXA12.txt make demo', 'time'],
+  ['env -P /opt/ZQXA13/bin make demo', '(withheld)'],
   ["env -S 'ZQXA14 make'", '(withheld)'],
-  ['time --format=ZQXA15 make demo', 'make'],
-  ['nice -n10 make demo', 'make'],
-  ['timeout --signal=KILL 5 make demo', 'make'],
-  ['exec -a ZQXA16 make demo', 'make'],
+  ['time --format=ZQXA15 make demo', '(withheld)'],
+  ['nice -n10 make demo', '(withheld)'],
+  ['timeout --signal=KILL 5 make demo', '(withheld)'],
+  ['exec -a ZQXA16 make demo', '(withheld)'],
   ['timeout --kill-sig=9 5 ZQXA17', '(withheld)'],
   ['X=$(make', '(withheld)'],
   ['echo "ZQXA18 never closed', 'echo'],
@@ -165,14 +167,35 @@ const LEXER_CASES = [
   ['function ZQXA20 { make demo; }', '(withheld)'],
   ['env | grep zqx', 'env'],
   ['cd /work/demo-project &>/dev/null && make demo', 'make'],
-  ["IFS=$'\\n' read -r line", 'read'],
+  ["IFS=$'\\n' read -r line", '(withheld)'],
   [Array.from({ length: 70 }, (_, i) => `V${i}=1`).join(' ') + ' make demo', '(withheld)'],
   ['X=$(cat ZQXA21.txt) && wc -l "$X"', 'wc'],
   [': > /work/demo-project/out.txt', ':'],
   ['g++ demo.cpp -o demo', 'g++'],
   ['./' + 'a'.repeat(64) + ' --x', 'a'.repeat(64)],
   ['./' + 'b'.repeat(65) + ' --x', '(withheld)'],
-  ['X="$(printf %s "ZQXA22") done"', 'printf'],
+  ['X="$(printf %s "ZQXA22") done"', '(withheld)'],
+  // whitelist edges: what is passed over must be plain or passable; the program must be plain
+  ['N=${#ZQXA23}\necho }ZQXA24 ZQXA25', '(withheld)'],
+  ['X=1 \\\nZQXA26 a', '(withheld)'],
+  ['nohup X=1 ZQXA27 a', '(withheld)'],
+  ['builtin ZQXA28', 'builtin'],
+  ['ZQXA29 () { make demo; }', '(withheld)'],
+  ['X=1 time ZQXA30 a', 'time'],
+  ['command -v ZQXA31', '(withheld)'],
+  ['cd "/work/demo project" && make demo', 'make'],
+  ['cd "$HOME/demo" 2>/dev/null && make demo', 'make'],
+  ["X='a b c' Y=\"$HOME/x\" make demo", 'make'],
+  ['# a comment line ending in a backslash \\\nmake demo', 'make'],
+  ['X=$(cat <<EOF\nZQXA32) ZQXA33\nEOF\n)', '(withheld)'],
+  ['X=$(case v in a) ZQXA34 b;; esac)', '(withheld)'],
+  ['env -i PATH=/usr/bin make demo', 'make'],
+  ['F=$(ls *.txt) && wc -l $F', 'wc'],
+  ['"$DIR"/bin/ZQXA35 --x', '(withheld)'],
+  ['X=1; cd /work/demo-project && make demo', 'make'],
+  ['X=$(git rev-parse HEAD) make demo', 'make'],
+  ['timeout 5 nice -n 3 env A=1 make demo', 'make'],
+  ['2 >ZQXA36 ZQXA37', '2'],
 ];
 {
   const f = file('lexer.jsonl', '56565656-7878-4909-8bcb-d0d0d0d0d0d0', 'd9000000');
@@ -199,6 +222,10 @@ const LABEL2_CASES = [
   ['Read', { file_path: '/work/demo-project/notes.txt:ZQXB06' }, '(withheld)'],
   ['Read', { file_path: { toString: 'ZQXB07 not callable' } }, '(withheld)'],
   ['Bash', { command: { ZQXB08: 'an object, not a command' } }, '(withheld)'],
+  ['Bash', { command: ['ZQXB09-command-in-an-array'] }, '(withheld)'],
+  ['Bash', { command: true }, '(withheld)'],
+  ['Read', { file_path: '/work/demo-project/' + 'f'.repeat(65) }, '(withheld)'],
+  ['Read', { file_path: '/work/demo-project/' + 'g'.repeat(64) }, 'g'.repeat(64)],
 ];
 {
   const f = file('labels2.jsonl', '67676767-8989-4a1a-8cdc-e0e0e0e0e0e0', 'da000000');
@@ -366,3 +393,78 @@ for (const [name, pointer] of [['compacted.jsonl', true], ['compacted-nopointer.
   f.leaf('Look at the two invented pictures.');
   f.write();
 }
+
+// parallel-msgid.jsonl: parallel.jsonl as older harness versions wrote it: no requestId, so the records of the one API
+// response share only message.id. Both calls still belong to the turn.
+{
+  const sid = '9a9a9a9a-bcbc-4d4d-8f0f-a2a2a2a2a2a2', pre = 'e6000000';
+  const f = file('parallel-msgid.jsonl', sid, pre);
+  const p = f.prompt('Read two more invented files at once.', { promptSource: 'typed' });
+  const a1 = f.uuid(2), a2 = f.uuid(3), r2 = f.uuid(4), r1 = f.uuid(5), t = f.uuid(6), e = env(sid);
+  const msg = (block) => ({ id: 'msg_pmsg_01', type: 'message', role: 'assistant', model: 'claude-demo-model', content: [block], stop_reason: 'tool_use', usage: { input_tokens: 10, output_tokens: 20 } });
+  f.raw({ parentUuid: p, ...e, type: 'assistant', message: msg({ type: 'tool_use', id: 'toolu_pmsg_01', name: 'Read', input: { file_path: '/work/demo-project/three.txt' } }), uuid: a1, timestamp: '2026-08-01T11:10:02.000Z' });
+  f.raw({ parentUuid: a1, ...e, type: 'assistant', message: msg({ type: 'tool_use', id: 'toolu_pmsg_02', name: 'Read', input: { file_path: '/work/demo-project/four.txt' } }), uuid: a2, timestamp: '2026-08-01T11:10:02.100Z' });
+  f.raw({ parentUuid: a2, ...e, type: 'user', message: { role: 'user', content: [{ tool_use_id: 'toolu_pmsg_02', type: 'tool_result', content: 'the invented fourth file' }] }, uuid: r2, timestamp: '2026-08-01T11:10:03.000Z', toolUseResult: { type: 'text' }, sourceToolAssistantUUID: a2 });
+  f.raw({ parentUuid: a1, ...e, type: 'user', message: { role: 'user', content: [{ tool_use_id: 'toolu_pmsg_01', type: 'tool_result', content: 'the invented third file' }] }, uuid: r1, timestamp: '2026-08-01T11:10:04.000Z', toolUseResult: { type: 'text' }, sourceToolAssistantUUID: a1 });
+  f.raw({ parentUuid: r1, ...e, type: 'assistant', message: { id: 'msg_pmsg_02', type: 'message', role: 'assistant', model: 'claude-demo-model', content: [{ type: 'text', text: 'Both invented files were read again.' }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 } }, uuid: t, timestamp: '2026-08-01T11:10:05.000Z' });
+  f.leaf('Read two more invented files at once.', t);
+  f.write();
+}
+
+// request-two-turns.jsonl: one API response whose two records fall in two turns (a queued prompt was written between
+// them). Its calls belong to the first turn, and each is printed once.
+{
+  const sid = 'abababab-cdcd-4e5e-8a1a-b3b3b3b3b3b3', pre = 'e7000000';
+  const f = file('request-two-turns.jsonl', sid, pre);
+  const p1 = f.prompt('Build the invented demo twice over.', { promptSource: 'typed' });
+  const a1 = f.uuid(2), p2 = f.uuid(3), a2 = f.uuid(4), r1 = f.uuid(5), r2 = f.uuid(6), t = f.uuid(7), e = env(sid);
+  const msg = (block) => ({ id: 'msg_rtt_01', type: 'message', role: 'assistant', model: 'claude-demo-model', content: [block], stop_reason: 'tool_use', usage: { input_tokens: 10, output_tokens: 20 } });
+  f.raw({ parentUuid: p1, ...e, type: 'assistant', message: msg({ type: 'tool_use', id: 'toolu_rtt_01', name: 'Bash', input: { command: 'make demo-one' } }), requestId: 'req_rtt_01', uuid: a1, timestamp: '2026-08-01T11:20:02.000Z' });
+  f.raw({ parentUuid: a1, ...e, type: 'user', message: { role: 'user', content: 'A queued invented follow-up prompt.' }, uuid: p2, timestamp: '2026-08-01T11:20:02.050Z', promptId: 'e7000000-1111-4000-8000-000000000002', promptSource: 'typed' });
+  f.raw({ parentUuid: p2, ...e, type: 'assistant', message: msg({ type: 'tool_use', id: 'toolu_rtt_02', name: 'Bash', input: { command: 'make demo-two' } }), requestId: 'req_rtt_01', uuid: a2, timestamp: '2026-08-01T11:20:02.100Z' });
+  f.raw({ parentUuid: a2, ...e, type: 'user', message: { role: 'user', content: [{ tool_use_id: 'toolu_rtt_01', type: 'tool_result', content: 'the invented first build' }] }, uuid: r1, timestamp: '2026-08-01T11:20:03.000Z', toolUseResult: { type: 'text' }, sourceToolAssistantUUID: a1 });
+  f.raw({ parentUuid: r1, ...e, type: 'user', message: { role: 'user', content: [{ tool_use_id: 'toolu_rtt_02', type: 'tool_result', content: 'the invented second build' }] }, uuid: r2, timestamp: '2026-08-01T11:20:04.000Z', toolUseResult: { type: 'text' }, sourceToolAssistantUUID: a2 });
+  f.raw({ parentUuid: r2, ...e, type: 'assistant', message: { id: 'msg_rtt_02', type: 'message', role: 'assistant', model: 'claude-demo-model', content: [{ type: 'text', text: 'Both invented builds ran.' }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 } }, requestId: 'req_rtt_02', uuid: t, timestamp: '2026-08-01T11:20:05.000Z' });
+  f.leaf('A queued invented follow-up prompt.', t);
+  f.write();
+}
+
+// errors2.jsonl: the exit code is read first, so a command's own output cannot change its class; no-anchor and not-read
+// come from a first line only; a hook's name is its script's, never an argument written after it
+{
+  const f = file('errors2.jsonl', 'bcbcbcbc-eded-4f7f-8b3b-c4c4c4c4c4c4', 'e8000000');
+  f.prompt('Run the second set of invented failing tools.', { promptSource: 'typed' });
+  const cases = [
+    ['toolu_errors2_01', 'Bash', { command: 'make demo-edit' }, 'Exit code 1\nmake: String to replace not found in the invented log'],
+    ['toolu_errors2_02', 'Bash', { command: 'make demo-read' }, 'Exit code 2\nthe invented tool says you must read the manual'],
+    ['toolu_errors2_03', 'Bash', { command: 'make demo-hook' }, 'PreToolUse:Bash hook error: [bash /work/demo-project/.claude/hooks/demo-gate.sh /work/demo-project/ZQXE21-argument.py]: an invented refusal'],
+    ['toolu_errors2_04', 'Bash', { command: 'make demo-check' }, 'PreToolUse:Bash hook error: [python3 /work/demo-project/.claude/hooks/demo-check.py --strict]: an invented refusal'],
+    ['toolu_errors2_05', 'Edit', { file_path: '/work/demo-project/a.txt', old_string: 'invented old text', new_string: 'invented new text' }, 'String to replace not found in file.\nString: invented old text'],
+    ['toolu_errors2_06', 'Write', { file_path: '/work/demo-project/b.txt', content: 'invented content here' }, 'File has not been read yet. Read it first before writing to it.'],
+    ['toolu_errors2_07', 'Edit', { file_path: '/work/demo-project/c.txt', old_string: 'invented old words', new_string: 'invented new words' }, 'An invented failure of another kind\nString to replace not found further down'],
+  ];
+  for (const [id, name, input, text] of cases) { f.use(id, name, input); f.result(id, text, { isError: true }); }
+  f.text('The second set of failures was seen.');
+  f.leaf('Run the second set of invented failing tools.');
+  f.write();
+}
+
+// unicode.jsonl: text outside ASCII in a prompt, a file name and a result. n is what JavaScript counts (UTF-16 code
+// units) and the hashes are of the UTF-8 bytes; a reader that took the file as latin1 would print other values.
+{
+  const f = file('unicode.jsonl', 'cdcdcdcd-fefe-4a8a-8c4c-d5d5d5d5d5d5', 'e9000000');
+  const p = 'Summarise the invented café notes: naïve façade, 中文 text and an emoji 🙂.';
+  f.prompt(p, { promptSource: 'typed' });
+  f.use('toolu_unicode_01', 'Read', { file_path: '/work/demo-project/café-notes.txt' });
+  f.result('toolu_unicode_01', 'Invented contents: déjà vu, 日本語, and 🙂🙂 twice.');
+  f.text('The invented café notes were read.');
+  f.leaf(p);
+  f.write();
+}
+
+// types-only.jsonl: no conversation records. The warning names the record types it found, each label-checked: free
+// text in a type field prints as (withheld).
+writeFileSync(join(DIR, 'types-only.jsonl'), [
+  JSON.stringify({ type: 'an invented free text type ZQXW01', note: 'an invented note' }),
+  JSON.stringify({ type: 'summary', summary: 'an invented summary line' }),
+].join('\n') + '\n');

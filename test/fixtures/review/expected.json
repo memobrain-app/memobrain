@@ -1,0 +1,518 @@
+{
+ "agent-zq.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"agent-zq.jsonl:L1\",\"ta\":\"agent-zq.jsonl:T001\",\"ch\":\"typed\",\"n\":18}\n{\"k\":\"call\",\"a\":\"agent-zq.jsonl:L2\",\"ta\":\"agent-zq.jsonl:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":true,\"r\":\"agent-zq.jsonl:L3\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"agent-zq.jsonl\",\"turns\":1,\"prompts\":1,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "agents-zqx.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"agents-z:L1\",\"ta\":\"agents-z:T001\",\"ch\":\"typed\",\"n\":18}\n{\"k\":\"call\",\"a\":\"agents-z:L2\",\"ta\":\"agents-z:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":true,\"r\":\"agents-z:L3\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"agents-z\",\"turns\":1,\"prompts\":1,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-bash.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-bash.:L1\",\"ta\":\"pb-bash.:T001\",\"ch\":\"typed\",\"n\":30}\n{\"k\":\"call\",\"a\":\"pb-bash.:L2\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"03a06440ff70\",\"ok\":true,\"r\":\"pb-bash.:L3\",\"out\":\"229b615a7489\",\"n\":22}\n{\"k\":\"call\",\"a\":\"pb-bash.:L4\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"6168855837c5\",\"ok\":true,\"r\":\"pb-bash.:L5\",\"out\":\"bca30757369b\",\"n\":22}\n{\"k\":\"call\",\"a\":\"pb-bash.:L6\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"69c731c202e5\",\"ok\":true,\"r\":\"pb-bash.:L7\",\"out\":\"e9ff410faef7\",\"n\":22}\n{\"k\":\"call\",\"a\":\"pb-bash.:L8\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"b10c03917c05\",\"ok\":true,\"r\":\"pb-bash.:L9\",\"out\":\"035f27af3a83\",\"n\":22}\n{\"k\":\"call\",\"a\":\"pb-bash.:L10\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"1234e78f4906\",\"ok\":true,\"r\":\"pb-bash.:L11\",\"out\":\"060444f810d9\",\"n\":22}\n{\"k\":\"call\",\"a\":\"pb-bash.:L12\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"6ee46d40a89f\",\"ok\":true,\"r\":\"pb-bash.:L13\",\"out\":\"2036d94d360b\",\"n\":22}\n{\"k\":\"call\",\"a\":\"pb-bash.:L14\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"c5389e48f32e\",\"ok\":true,\"r\":\"pb-bash.:L15\",\"out\":\"07e9debab533\",\"n\":22}\n{\"k\":\"call\",\"a\":\"pb-bash.:L16\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"fd67902400d4\",\"ok\":true,\"r\":\"pb-bash.:L17\",\"out\":\"2258d01215ad\",\"n\":22}\n{\"k\":\"call\",\"a\":\"pb-bash.:L18\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"89810a915f89\",\"ok\":true,\"r\":\"pb-bash.:L19\",\"out\":\"bbae2dd4da5c\",\"n\":22}\n{\"k\":\"call\",\"a\":\"pb-bash.:L20\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"5d9e23f47d5d\",\"ok\":true,\"r\":\"pb-bash.:L21\",\"out\":\"93fde0dfa2bc\",\"n\":22}\n{\"k\":\"call\",\"a\":\"pb-bash.:L22\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"4ad0f2a220c7\",\"ok\":true,\"r\":\"pb-bash.:L23\",\"out\":\"79366e2acee5\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L24\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"0cd4d6b8a49c\",\"ok\":true,\"r\":\"pb-bash.:L25\",\"out\":\"3330bff14798\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L26\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"ad4bec2d5213\",\"ok\":true,\"r\":\"pb-bash.:L27\",\"out\":\"74984f315d74\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L28\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"09f99868cf0e\",\"ok\":true,\"r\":\"pb-bash.:L29\",\"out\":\"1daa438a1bf7\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L30\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"e624a18d7fd8\",\"ok\":true,\"r\":\"pb-bash.:L31\",\"out\":\"39e48fcd17c0\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L32\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"c29419c2c9c8\",\"ok\":true,\"r\":\"pb-bash.:L33\",\"out\":\"64be2f6c93f5\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L34\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"41e7783b6d86\",\"ok\":true,\"r\":\"pb-bash.:L35\",\"out\":\"2a102c33da59\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L36\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"e83a4c4bd8ca\",\"ok\":true,\"r\":\"pb-bash.:L37\",\"out\":\"879b1bddc911\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L38\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"cf8e724c50a3\",\"ok\":true,\"r\":\"pb-bash.:L39\",\"out\":\"fd1f8f2da373\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L40\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"29076597443d\",\"ok\":true,\"r\":\"pb-bash.:L41\",\"out\":\"c4d4b553f15c\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L42\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"da7c3526363e\",\"ok\":true,\"r\":\"pb-bash.:L43\",\"out\":\"986fc82181b3\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L44\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"59dc3ec22168\",\"ok\":true,\"r\":\"pb-bash.:L45\",\"out\":\"33fbbf0c3b4f\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L46\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"849332dd38f4\",\"ok\":true,\"r\":\"pb-bash.:L47\",\"out\":\"2bf5b00c0b15\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L48\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"1c1bba22f271\",\"ok\":true,\"r\":\"pb-bash.:L49\",\"out\":\"21c98ee5b5b8\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L50\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"00c23f578565\",\"ok\":true,\"r\":\"pb-bash.:L51\",\"out\":\"64cfaa9e4141\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L52\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7d343115b152\",\"ok\":true,\"r\":\"pb-bash.:L53\",\"out\":\"e14d28e3323a\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L54\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"82ddab5e9358\",\"ok\":true,\"r\":\"pb-bash.:L55\",\"out\":\"8a90b5849b45\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L56\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"env\",\"in\":\"f59d414d8c33\",\"ok\":true,\"r\":\"pb-bash.:L57\",\"out\":\"d94b0e57a09b\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L58\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"constructor\",\"in\":\"0deb657468b7\",\"ok\":true,\"r\":\"pb-bash.:L59\",\"out\":\"deef0c3a123f\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L60\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"c3ef91a8ad9a\",\"ok\":true,\"r\":\"pb-bash.:L61\",\"out\":\"9a9302ac1e0c\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L62\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"[\",\"in\":\"b0d50e562b23\",\"ok\":true,\"r\":\"pb-bash.:L63\",\"out\":\"edf376076d73\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L64\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"7e775c1bb3a1\",\"ok\":true,\"r\":\"pb-bash.:L65\",\"out\":\"5637c6bfba65\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L66\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"d0b2e5a877ed\",\"ok\":true,\"r\":\"pb-bash.:L67\",\"out\":\"793c414b3873\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L68\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"fd9c8acee0b0\",\"ok\":true,\"r\":\"pb-bash.:L69\",\"out\":\"f71f5d1b51f1\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L70\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"7060528a8ac3\",\"ok\":true,\"r\":\"pb-bash.:L71\",\"out\":\"cba191bac56e\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L72\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"614280651055\",\"ok\":true,\"r\":\"pb-bash.:L73\",\"out\":\"f4686a9ff294\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L74\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"1a6cc2ef43dd\",\"ok\":true,\"r\":\"pb-bash.:L75\",\"out\":\"dcdbf63bebe0\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L76\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"cd\",\"in\":\"31fe480be755\",\"ok\":true,\"r\":\"pb-bash.:L77\",\"out\":\"37156ee0b22b\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L78\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"cd\",\"in\":\"2c057513aba6\",\"ok\":true,\"r\":\"pb-bash.:L79\",\"out\":\"6441f0c59b21\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L80\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"3561a7e89078\",\"ok\":true,\"r\":\"pb-bash.:L81\",\"out\":\"13cc22c07bdd\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L82\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"ls\",\"in\":\"8a9caa3348b8\",\"ok\":true,\"r\":\"pb-bash.:L83\",\"out\":\"d03c2150e8ce\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L84\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"ls\",\"in\":\"da88f119756a\",\"ok\":true,\"r\":\"pb-bash.:L85\",\"out\":\"65274444b5b2\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L86\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7ed59c6298f7\",\"ok\":true,\"r\":\"pb-bash.:L87\",\"out\":\"4c81bfc0d4c8\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L88\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"builtin\",\"in\":\"d790e3adc823\",\"ok\":true,\"r\":\"pb-bash.:L89\",\"out\":\"db71be3ec1cb\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L90\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"73976dc25c4e\",\"ok\":true,\"r\":\"pb-bash.:L91\",\"out\":\"027880c6b724\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L92\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"cd\",\"in\":\"d5eff9f0967f\",\"ok\":true,\"r\":\"pb-bash.:L93\",\"out\":\"d24b1cf8208e\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L94\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"0b527234bbe7\",\"ok\":true,\"r\":\"pb-bash.:L95\",\"out\":\"690a4fdb6f89\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L96\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"7d9de8caff5c\",\"ok\":true,\"r\":\"pb-bash.:L97\",\"out\":\"4a92c2826e55\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L98\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"53de0aaeb965\",\"ok\":true,\"r\":\"pb-bash.:L99\",\"out\":\"6a0f5e964cda\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L100\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7956ef2d6ef3\",\"ok\":true,\"r\":\"pb-bash.:L101\",\"out\":\"1b95702451fd\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L102\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"772ecdd4ee11\",\"ok\":true,\"r\":\"pb-bash.:L103\",\"out\":\"f0deabbdb277\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L104\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"80d5cb11fd54\",\"ok\":true,\"r\":\"pb-bash.:L105\",\"out\":\"9a810905c957\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L106\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"07ecbb7b7690\",\"ok\":true,\"r\":\"pb-bash.:L107\",\"out\":\"6a9eed336f0d\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L108\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"d04302581b36\",\"ok\":true,\"r\":\"pb-bash.:L109\",\"out\":\"e56fc403edec\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L110\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"079a21977d3c\",\"ok\":true,\"r\":\"pb-bash.:L111\",\"out\":\"41ebf3f89cb8\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L112\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"72a21d7a5434\",\"ok\":true,\"r\":\"pb-bash.:L113\",\"out\":\"be391c3ce31d\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L114\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"7a7f05b459a7\",\"ok\":true,\"r\":\"pb-bash.:L115\",\"out\":\"674a996d208e\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L116\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"67feb66d64c5\",\"ok\":true,\"r\":\"pb-bash.:L117\",\"out\":\"6f48ea9123e3\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L118\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"e3f03b71ae32\",\"ok\":true,\"r\":\"pb-bash.:L119\",\"out\":\"99756d575533\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L120\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"af32aad1a218\",\"ok\":true,\"r\":\"pb-bash.:L121\",\"out\":\"3446ebe58b1d\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L122\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"6e7b5cb0a5e4\",\"ok\":true,\"r\":\"pb-bash.:L123\",\"out\":\"c5bec2765bde\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L124\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"a2b82dd15689\",\"ok\":true,\"r\":\"pb-bash.:L125\",\"out\":\"b995f8772a2a\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L126\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"20e883ef1c2e\",\"ok\":true,\"r\":\"pb-bash.:L127\",\"out\":\"8788b4c8b8b9\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L128\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"9cc29326ccae\",\"ok\":true,\"r\":\"pb-bash.:L129\",\"out\":\"a950d106ed75\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L130\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"f841b516b95a\",\"ok\":true,\"r\":\"pb-bash.:L131\",\"out\":\"caa8ffa02a10\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L132\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"982e0f7b47d1\",\"ok\":true,\"r\":\"pb-bash.:L133\",\"out\":\"ac3f79cbae09\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L134\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"2108579270fb\",\"ok\":true,\"r\":\"pb-bash.:L135\",\"out\":\"2e466c8dbbfe\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L136\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"9a3cadf03334\",\"ok\":true,\"r\":\"pb-bash.:L137\",\"out\":\"e984f5c8cd84\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L138\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"8ecfa687ac4d\",\"ok\":true,\"r\":\"pb-bash.:L139\",\"out\":\"7c3d89321e5d\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L140\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"4fcf44a899af\",\"ok\":true,\"r\":\"pb-bash.:L141\",\"out\":\"d3959d640294\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L142\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"50d8b2ec773a\",\"ok\":true,\"r\":\"pb-bash.:L143\",\"out\":\"80aaa2372f21\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L144\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"94836d9b5630\",\"ok\":true,\"r\":\"pb-bash.:L145\",\"out\":\"5a8c886ae946\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L146\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"ef43d3062f4e\",\"ok\":true,\"r\":\"pb-bash.:L147\",\"out\":\"3484d780909e\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L148\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"d1cf67e05a0b\",\"ok\":true,\"r\":\"pb-bash.:L149\",\"out\":\"2c4a78d10d78\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L150\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"04dba6d641ae\",\"ok\":true,\"r\":\"pb-bash.:L151\",\"out\":\"5652a34636c6\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L152\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"bb39348bfca2\",\"ok\":true,\"r\":\"pb-bash.:L153\",\"out\":\"7a0a7f6908f2\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L154\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"4e4211637e04\",\"ok\":true,\"r\":\"pb-bash.:L155\",\"out\":\"1372bd84e59d\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L156\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"1fa8177e7742\",\"ok\":true,\"r\":\"pb-bash.:L157\",\"out\":\"d11cbe4ccf6d\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L158\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"fdcb83a319fa\",\"ok\":true,\"r\":\"pb-bash.:L159\",\"out\":\"9b178ffe010b\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L160\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"da7c38109ad6\",\"ok\":true,\"r\":\"pb-bash.:L161\",\"out\":\"e06bd5d9a300\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L162\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"cf9647c7b92a\",\"ok\":true,\"r\":\"pb-bash.:L163\",\"out\":\"1a35ce0e63dd\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L164\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"bb19b9079ee8\",\"ok\":true,\"r\":\"pb-bash.:L165\",\"out\":\"4d8347aaced4\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L166\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"c4ce90ef14c0\",\"ok\":true,\"r\":\"pb-bash.:L167\",\"out\":\"90c8ebd6050f\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L168\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"8b50f4a514cc\",\"ok\":true,\"r\":\"pb-bash.:L169\",\"out\":\"7e3decd73d6b\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L170\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"89962e492173\",\"ok\":true,\"r\":\"pb-bash.:L171\",\"out\":\"82a5dc2fee9c\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L172\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"f3eca1c00490\",\"ok\":true,\"r\":\"pb-bash.:L173\",\"out\":\"20931a51b4ad\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L174\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"5fdb11373810\",\"ok\":true,\"r\":\"pb-bash.:L175\",\"out\":\"3e8411b4732a\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L176\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"e5b9d977eee2\",\"ok\":true,\"r\":\"pb-bash.:L177\",\"out\":\"2fd7d8f41ccd\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L178\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"0b576fae4bdf\",\"ok\":true,\"r\":\"pb-bash.:L179\",\"out\":\"0076999bab87\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L180\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"620c0e23f10d\",\"ok\":true,\"r\":\"pb-bash.:L181\",\"out\":\"d5fe24652a5c\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L182\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"251b9650112a\",\"ok\":true,\"r\":\"pb-bash.:L183\",\"out\":\"a767474ab9fb\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L184\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"1f33e09b592a\",\"ok\":true,\"r\":\"pb-bash.:L185\",\"out\":\"6829e384dcd7\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L186\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"7cba8fe6d66d\",\"ok\":true,\"r\":\"pb-bash.:L187\",\"out\":\"c35f37f8bf97\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L188\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"2ee5424fddfa\",\"ok\":true,\"r\":\"pb-bash.:L189\",\"out\":\"daadb86a6b23\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-bash.:L190\",\"ta\":\"pb-bash.:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"93269e9b8650\",\"ok\":true,\"r\":\"pb-bash.:L191\",\"out\":\"cd4de5cc0681\",\"n\":23}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-bash.\",\"turns\":1,\"prompts\":1,\"calls\":95,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-channels.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-chann:L3\",\"ta\":\"pb-chann:T001\",\"ch\":\"loop\",\"n\":47}\n{\"k\":\"turn\",\"a\":\"pb-chann:L11\",\"ta\":\"pb-chann:T002\",\"ch\":\"parent\",\"n\":19}\n{\"k\":\"turn\",\"a\":\"pb-chann:L13\",\"ta\":\"pb-chann:T003\",\"ch\":\"task\",\"n\":19}\n{\"k\":\"turn\",\"a\":\"pb-chann:L15\",\"ta\":\"pb-chann:T004\",\"ch\":\"task\",\"n\":51}\n{\"k\":\"turn\",\"a\":\"pb-chann:L17\",\"ta\":\"pb-chann:T005\",\"ch\":\"task\",\"n\":54}\n{\"k\":\"turn\",\"a\":\"pb-chann:L19\",\"ta\":\"pb-chann:T006\",\"ch\":\"sdk\",\"n\":19}\n{\"k\":\"turn\",\"a\":\"pb-chann:L21\",\"ta\":\"pb-chann:T007\",\"ch\":\"input\",\"n\":20}\n{\"k\":\"turn\",\"a\":\"pb-chann:L25\",\"ta\":\"pb-chann:T008\",\"ch\":\"typed\",\"n\":20}\n{\"k\":\"turn\",\"a\":\"pb-chann:L27\",\"ta\":\"pb-chann:T009\",\"ch\":\"sdk\",\"n\":20}\n{\"k\":\"turn\",\"a\":\"pb-chann:L29\",\"ta\":\"pb-chann:T010\",\"ch\":\"parent\",\"n\":20}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-chann\",\"turns\":10,\"prompts\":4,\"calls\":0,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-compact-end.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-compa:L1\",\"ta\":\"pb-compa:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-compa:L2\",\"ta\":\"pb-compa:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"51af8e8de7b7\",\"ok\":true,\"r\":\"pb-compa:L3\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-compa\",\"turns\":1,\"prompts\":1,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-content.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-conte:L1\",\"ta\":\"pb-conte:T001\",\"ch\":\"typed\",\"n\":32}\n{\"k\":\"call\",\"a\":\"pb-conte:L2\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"a00825d846cc\",\"ok\":true,\"r\":\"pb-conte:L3\",\"out\":\"e3b0c44298fc\",\"n\":0}\n{\"k\":\"call\",\"a\":\"pb-conte:L4\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"34a869bb965b\",\"ok\":true,\"r\":\"pb-conte:L5\",\"out\":\"e08cba64d8a0\",\"n\":6}\n{\"k\":\"call\",\"a\":\"pb-conte:L6\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"1836a9d94f51\",\"ok\":true,\"r\":\"pb-conte:L7\",\"out\":\"08f38ef19e92\",\"n\":0}\n{\"k\":\"call\",\"a\":\"pb-conte:L8\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"1046e0c1d997\",\"ok\":true,\"r\":\"pb-conte:L9\",\"out\":\"321be68224ea\",\"n\":0}\n{\"k\":\"call\",\"a\":\"pb-conte:L10\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"fbe0025b88db\",\"ok\":true,\"r\":\"pb-conte:L11\",\"out\":\"4f4deeaca7a5\",\"n\":15}\n{\"k\":\"call\",\"a\":\"pb-conte:L12\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"8d57df5207af\",\"ok\":true,\"r\":\"pb-conte:L13\",\"out\":\"dc17f1727d79\",\"n\":15}\n{\"k\":\"call\",\"a\":\"pb-conte:L14\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"f3daa95f11f4\",\"ok\":true,\"r\":\"pb-conte:L15\",\"out\":\"e3b0c44298fc\",\"n\":0}\n{\"k\":\"call\",\"a\":\"pb-conte:L16\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"9b9bd40e0a71\",\"ok\":true,\"r\":\"pb-conte:L17\",\"out\":\"e3b0c44298fc\",\"n\":0}\n{\"k\":\"call\",\"a\":\"pb-conte:L18\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"9d34ee52b151\",\"ok\":true,\"r\":\"pb-conte:L19\",\"out\":\"e3b0c44298fc\",\"n\":0}\n{\"k\":\"call\",\"a\":\"pb-conte:L20\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"2b34ae99b5b0\",\"ok\":true,\"r\":\"pb-conte:L21\",\"out\":\"790f8f5fa7e2\",\"n\":12}\n{\"k\":\"call\",\"a\":\"pb-conte:L22\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"313b34042d78\",\"ok\":true,\"r\":\"pb-conte:L23\",\"out\":\"e3b0c44298fc\",\"n\":0}\n{\"k\":\"call\",\"a\":\"pb-conte:L24\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"1623996f238a\",\"ok\":true,\"r\":\"pb-conte:L25\",\"out\":\"e3b0c44298fc\",\"n\":0}\n{\"k\":\"call\",\"a\":\"pb-conte:L26\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"5e52a1a510cc\",\"ok\":true,\"r\":\"pb-conte:L27\",\"out\":\"bfca69a2c40f\",\"n\":1}\n{\"k\":\"call\",\"a\":\"pb-conte:L28\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"e56900ff8c89\",\"ok\":true,\"r\":\"pb-conte:L29\",\"out\":\"88f28150c62d\",\"n\":1}\n{\"k\":\"call\",\"a\":\"pb-conte:L30\",\"ta\":\"pb-conte:T001\",\"tool\":\"Read\",\"verb\":\".png\",\"in\":\"63f8f0e00eed\",\"ok\":true,\"r\":\"pb-conte:L31\",\"out\":\"13b6437c8865\",\"n\":16}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-conte\",\"turns\":1,\"prompts\":1,\"calls\":15,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-errors.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-error:L1\",\"ta\":\"pb-error:T001\",\"ch\":\"typed\",\"n\":32}\n{\"k\":\"call\",\"a\":\"pb-error:L2\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"hook-block:zqx-gate\",\"r\":\"pb-error:L3\",\"out\":\"9d7a8c3300ca\",\"n\":77}\n{\"k\":\"call\",\"a\":\"pb-error:L4\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"hook-block:zqx-gate\",\"r\":\"pb-error:L5\",\"out\":\"9ca1c208fd66\",\"n\":74}\n{\"k\":\"call\",\"a\":\"pb-error:L6\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"hook-block:zqx-gate\",\"r\":\"pb-error:L7\",\"out\":\"ae5343ba386f\",\"n\":76}\n{\"k\":\"call\",\"a\":\"pb-error:L8\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"hook-block:zqx-gate\",\"r\":\"pb-error:L9\",\"out\":\"430f49ccb99c\",\"n\":67}\n{\"k\":\"call\",\"a\":\"pb-error:L10\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"hook-block:zqx-gate\",\"r\":\"pb-error:L11\",\"out\":\"8f22e522aa57\",\"n\":68}\n{\"k\":\"call\",\"a\":\"pb-error:L12\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"hook-block:zqx-gate\",\"r\":\"pb-error:L13\",\"out\":\"82dd2e598b87\",\"n\":67}\n{\"k\":\"call\",\"a\":\"pb-error:L14\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"hook-block:zqx-gate\",\"r\":\"pb-error:L15\",\"out\":\"264a0c5b8334\",\"n\":67}\n{\"k\":\"call\",\"a\":\"pb-error:L16\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"hook-block:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"r\":\"pb-error:L17\",\"out\":\"0925ebc2e39c\",\"n\":108}\n{\"k\":\"call\",\"a\":\"pb-error:L18\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"hook-block\",\"r\":\"pb-error:L19\",\"out\":\"e90df672191f\",\"n\":109}\n{\"k\":\"call\",\"a\":\"pb-error:L20\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"other\",\"r\":\"pb-error:L21\",\"out\":\"9dd7611ea783\",\"n\":62}\n{\"k\":\"call\",\"a\":\"pb-error:L22\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"other\",\"r\":\"pb-error:L23\",\"out\":\"44ab499633f9\",\"n\":48}\n{\"k\":\"call\",\"a\":\"pb-error:L24\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"other\",\"r\":\"pb-error:L25\",\"out\":\"c8a458c7f5eb\",\"n\":58}\n{\"k\":\"call\",\"a\":\"pb-error:L26\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"other\",\"r\":\"pb-error:L27\",\"out\":\"728bd23dc826\",\"n\":399}\n{\"k\":\"call\",\"a\":\"pb-error:L28\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"other\",\"r\":\"pb-error:L29\",\"out\":\"e786b79ce75b\",\"n\":18}\n{\"k\":\"call\",\"a\":\"pb-error:L30\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"exit-3\",\"r\":\"pb-error:L31\",\"out\":\"a60eec2c2196\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-error:L32\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"other\",\"r\":\"pb-error:L33\",\"out\":\"d5129b4b778a\",\"n\":455}\n{\"k\":\"call\",\"a\":\"pb-error:L34\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"other\",\"r\":\"pb-error:L35\",\"out\":\"99f435eafe07\",\"n\":411}\n{\"k\":\"call\",\"a\":\"pb-error:L36\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"hook-block:zqx-u\",\"r\":\"pb-error:L37\",\"out\":\"5ae9dc524d2f\",\"n\":66}\n{\"k\":\"call\",\"a\":\"pb-error:L38\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"hook-block\",\"r\":\"pb-error:L39\",\"out\":\"f4385204e02f\",\"n\":69}\n{\"k\":\"call\",\"a\":\"pb-error:L40\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"exit-7\",\"r\":\"pb-error:L41\",\"out\":\"21cb805f3c56\",\"n\":14}\n{\"k\":\"call\",\"a\":\"pb-error:L42\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"exit-255\",\"r\":\"pb-error:L43\",\"out\":\"054c26500a47\",\"n\":13}\n{\"k\":\"call\",\"a\":\"pb-error:L44\",\"ta\":\"pb-error:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"other\",\"r\":\"pb-error:L45\",\"out\":\"832cfaa23ef2\",\"n\":14}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-error\",\"turns\":1,\"prompts\":1,\"calls\":22,\"failures\":22,\"unanswered\":0,\"errorClasses\":{\"hook-block:zqx-gate\":7,\"hook-block:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\":1,\"hook-block\":2,\"other\":8,\"exit-3\":1,\"hook-block:zqx-u\":1,\"exit-7\":1,\"exit-255\":1},\"retries\":21,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-labels.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-label:L1\",\"ta\":\"pb-label:T001\",\"ch\":\"typed\",\"n\":18}\n{\"k\":\"call\",\"a\":\"pb-label:L2\",\"ta\":\"pb-label:T001\",\"tool\":\"Read\",\"verb\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"in\":\"67d32185b9cc\",\"ok\":true,\"r\":\"pb-label:L3\",\"out\":\"5728357e2b2b\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-label:L4\",\"ta\":\"pb-label:T001\",\"tool\":\"Read\",\"verb\":\"(withheld)\",\"in\":\"10fc1d8da1c2\",\"ok\":true,\"r\":\"pb-label:L5\",\"out\":\"0c70bbd83b8f\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-label:L6\",\"ta\":\"pb-label:T001\",\"tool\":\"Read\",\"verb\":\".ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"in\":\"2526fe66f100\",\"ok\":true,\"r\":\"pb-label:L7\",\"out\":\"3f4374e29119\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-label:L8\",\"ta\":\"pb-label:T001\",\"tool\":\"Read\",\"verb\":\".ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg\",\"in\":\"e2ac4c2fcc0c\",\"ok\":true,\"r\":\"pb-label:L9\",\"out\":\"fa8a1523b789\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-label:L10\",\"ta\":\"pb-label:T001\",\"tool\":\"Read\",\"verb\":\"(none)\",\"in\":\"d2f60218dc65\",\"ok\":true,\"r\":\"pb-label:L11\",\"out\":\"accfdf3a4453\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-label:L12\",\"ta\":\"pb-label:T001\",\"tool\":\"Read\",\"verb\":\"(none)\",\"in\":\"f6641a84f4ac\",\"ok\":true,\"r\":\"pb-label:L13\",\"out\":\"25b75bb1105c\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-label:L14\",\"ta\":\"pb-label:T001\",\"tool\":\"NotebookEdit\",\"verb\":\".ipynb\",\"in\":\"08fcbbbab5da\",\"ok\":true,\"r\":\"pb-label:L15\",\"out\":\"8561a4160990\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-label:L16\",\"ta\":\"pb-label:T001\",\"tool\":\"Read\",\"verb\":\".md\",\"in\":\"ff355cdd3ad5\",\"ok\":true,\"r\":\"pb-label:L17\",\"out\":\"1f80201db3a5\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-label:L18\",\"ta\":\"pb-label:T001\",\"tool\":\"Bash\",\"verb\":\"(empty)\",\"in\":\"839e0951ad9c\",\"ok\":true,\"r\":\"pb-label:L19\",\"out\":\"721ea59408f0\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-label:L20\",\"ta\":\"pb-label:T001\",\"tool\":\"Bash\",\"verb\":\"(empty)\",\"in\":\"44136fa355b3\",\"ok\":true,\"r\":\"pb-label:L21\",\"out\":\"c48e8fb5443f\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-label:L22\",\"ta\":\"pb-label:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"fcd2ee784d01\",\"ok\":true,\"r\":\"pb-label:L23\",\"out\":\"aebff059dcc3\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L24\",\"ta\":\"pb-label:T001\",\"tool\":\"Bash\",\"verb\":\"(empty)\",\"in\":\"6a8c3129bc75\",\"ok\":true,\"r\":\"pb-label:L25\",\"out\":\"3b1aec7ec49d\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L26\",\"ta\":\"pb-label:T001\",\"tool\":\"Agent\",\"verb\":\"agent\",\"in\":\"4697fbc6123e\",\"ok\":true,\"r\":\"pb-label:L27\",\"out\":\"b8a309da6b9f\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L28\",\"ta\":\"pb-label:T001\",\"tool\":\"zqx:tool\",\"verb\":\"zqx:tool\",\"in\":\"6539fd6eb99a\",\"ok\":true,\"r\":\"pb-label:L29\",\"out\":\"62c2f73023ea\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L30\",\"ta\":\"pb-label:T001\",\"tool\":\"g++\",\"verb\":\"g++\",\"in\":\"44136fa355b3\",\"ok\":true,\"r\":\"pb-label:L31\",\"out\":\"44bd6c216450\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L32\",\"ta\":\"pb-label:T001\",\"tool\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"verb\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"in\":\"44136fa355b3\",\"ok\":true,\"r\":\"pb-label:L33\",\"out\":\"dc1f1a568be8\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L34\",\"ta\":\"pb-label:T001\",\"tool\":\"(withheld)\",\"verb\":\"(withheld)\",\"in\":\"44136fa355b3\",\"ok\":true,\"r\":\"pb-label:L35\",\"out\":\"1aa4f1e68c8c\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L36\",\"ta\":\"pb-label:T001\",\"tool\":\"Skill\",\"verb\":\"zqx:skill\",\"in\":\"7fb3b0e25f8d\",\"ok\":true,\"r\":\"pb-label:L37\",\"out\":\"6a9629dde666\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L38\",\"ta\":\"pb-label:T001\",\"tool\":\"Agent\",\"verb\":\"zqx:agent\",\"in\":\"4436b731f94b\",\"ok\":true,\"r\":\"pb-label:L39\",\"out\":\"475b8abef69c\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L40\",\"ta\":\"pb-label:T001\",\"tool\":\"Agent\",\"verb\":\"agent\",\"in\":\"a9a0d44281c3\",\"ok\":true,\"r\":\"pb-label:L41\",\"out\":\"c8112eb86ee2\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L42\",\"ta\":\"pb-label:T001\",\"tool\":\"Skill\",\"verb\":\"skill\",\"in\":\"44136fa355b3\",\"ok\":true,\"r\":\"pb-label:L43\",\"out\":\"d29d403cc410\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L44\",\"ta\":\"pb-label:T001\",\"tool\":\"Read\",\"verb\":\".txt\",\"in\":\"cb816dfd13b7\",\"ok\":true,\"r\":\"pb-label:L45\",\"out\":\"09f696866de1\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L46\",\"ta\":\"pb-label:T001\",\"tool\":\"Read\",\"verb\":\".bashrc\",\"in\":\"c0fbad84bd4e\",\"ok\":true,\"r\":\"pb-label:L47\",\"out\":\"3493c3b04b77\",\"n\":24}\n{\"k\":\"call\",\"a\":\"pb-label:L48\",\"ta\":\"pb-label:T001\",\"tool\":\"Read\",\"verb\":\".gz\",\"in\":\"24c1b802ac74\",\"ok\":true,\"r\":\"pb-label:L49\",\"out\":\"95c8c20419eb\",\"n\":24}\n{\"k\":\"turn\",\"a\":\"pb-label:L51\",\"ta\":\"pb-label:T002\",\"ch\":\"none\",\"n\":36}\n{\"k\":\"turn\",\"a\":\"pb-label:L53\",\"ta\":\"pb-label:T003\",\"ch\":\"typed\",\"n\":36}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-label\",\"turns\":3,\"prompts\":2,\"calls\":24,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-lastnode-parent.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-lastn:L1\",\"ta\":\"pb-lastn:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-lastn:L2\",\"ta\":\"pb-lastn:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"49dae0321356\",\"ok\":true,\"r\":\"pb-lastn:L3\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"turn\",\"a\":\"pb-lastn:L4\",\"ta\":\"pb-lastn:T002\",\"ch\":\"typed\",\"n\":23}\n{\"k\":\"call\",\"a\":\"pb-lastn:L5\",\"ta\":\"pb-lastn:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"8efa2fa08cc7\",\"ok\":true,\"r\":\"pb-lastn:L6\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-lastn\",\"turns\":2,\"prompts\":2,\"calls\":2,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-missing-leaf.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-missi:L1\",\"ta\":\"pb-missi:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-missi:L2\",\"ta\":\"pb-missi:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"440fd1730f04\",\"ok\":true,\"r\":\"pb-missi:L3\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-missi\",\"turns\":1,\"prompts\":1,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-noparent-result.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-nopar:L1\",\"ta\":\"pb-nopar:T001\",\"ch\":\"typed\",\"n\":15}\n{\"k\":\"call\",\"a\":\"pb-nopar:L2\",\"ta\":\"pb-nopar:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":true,\"r\":null,\"out\":\"f1e27becea46\",\"n\":13}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-nopar\",\"turns\":1,\"prompts\":1,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-order.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-order:L1\",\"ta\":\"pb-order:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-order:L2\",\"ta\":\"pb-order:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"96a3ed522355\",\"ok\":true,\"r\":\"pb-order:L3\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb-order:L4\",\"ta\":\"pb-order:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"51b98c7f32fb\",\"ok\":true,\"r\":\"pb-order:L5\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-order\",\"turns\":1,\"prompts\":1,\"calls\":2,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-orphan-mid.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-orpha:L1\",\"ta\":\"pb-orpha:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-orpha:L2\",\"ta\":\"pb-orpha:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"51af8e8de7b7\",\"ok\":true,\"r\":\"pb-orpha:L3\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"turn\",\"a\":\"pb-orpha:L5\",\"ta\":\"pb-orpha:T002\",\"ch\":\"typed\",\"n\":10}\n{\"k\":\"call\",\"a\":\"pb-orpha:L6\",\"ta\":\"pb-orpha:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7a7d70a12119\",\"ok\":true,\"r\":\"pb-orpha:L7\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-orpha\",\"turns\":2,\"prompts\":2,\"calls\":2,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-parallel-cycle.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-paral:L1\",\"ta\":\"pb-paral:T001\",\"ch\":\"typed\",\"n\":9}\n",
+   "err": "memobrain skeleton: warning: '<dir>/pb-parallel-cycle.jsonl': 4 records sit on a parentUuid cycle or below one (following the parent links never reaches the start of the session), so the live path through them may be incomplete.\n"
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-paral\",\"turns\":1,\"prompts\":1,\"calls\":0,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": "memobrain stats: warning: '<dir>/pb-parallel-cycle.jsonl': 4 records sit on a parentUuid cycle or below one (following the parent links never reaches the start of the session), so the live path through them may be incomplete.\n"
+  }
+ },
+ "pb-parallel.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-paral:L1\",\"ta\":\"pb-paral:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-paral:L2\",\"ta\":\"pb-paral:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"51af8e8de7b7\",\"ok\":true,\"r\":\"pb-paral:L5\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb-paral:L3\",\"ta\":\"pb-paral:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7a7d70a12119\",\"ok\":true,\"r\":\"pb-paral:L4\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-paral\",\"turns\":1,\"prompts\":1,\"calls\":2,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-partial.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-parti:L1\",\"ta\":\"pb-parti:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"turn\",\"a\":\"pb-parti:L3\",\"ta\":\"pb-parti:T002\",\"ch\":\"typed\",\"n\":15}\n{\"k\":\"call\",\"a\":\"pb-parti:L4\",\"ta\":\"pb-parti:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"04667f43cad2\",\"ok\":true,\"r\":\"pb-parti:L5\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"turn\",\"a\":\"pb-parti:L9\",\"ta\":\"pb-parti:T003\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-parti:L10\",\"ta\":\"pb-parti:T003\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"b61a819f39ea\",\"ok\":true,\"r\":\"pb-parti:L11\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-parti\",\"turns\":3,\"prompts\":3,\"calls\":2,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-problems2.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-probl:L1\",\"ta\":\"pb-probl:T001\",\"ch\":\"typed\",\"n\":20}\n{\"k\":\"call\",\"a\":\"pb-probl:L3\",\"ta\":\"pb-probl:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":true,\"r\":\"pb-probl:L5\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": "memobrain skeleton: warning: '<dir>/pb-problems2.jsonl': 2 lines could not be read as a JSON object (first: line 2) and were skipped.\n"
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-probl\",\"turns\":1,\"prompts\":1,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": "memobrain stats: warning: '<dir>/pb-problems2.jsonl': 2 lines could not be read as a JSON object (first: line 2) and were skipped.\n"
+  }
+ },
+ "pb-req-reuse.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-req-r:L1\",\"ta\":\"pb-req-r:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-req-r:L2\",\"ta\":\"pb-req-r:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"51af8e8de7b7\",\"ok\":true,\"r\":\"pb-req-r:L3\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb-req-r:L6\",\"ta\":\"pb-req-r:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7a7d70a12119\",\"ok\":true,\"r\":\"pb-req-r:L7\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"turn\",\"a\":\"pb-req-r:L5\",\"ta\":\"pb-req-r:T002\",\"ch\":\"typed\",\"n\":10}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-req-r\",\"turns\":2,\"prompts\":2,\"calls\":2,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-req-rewound.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-req-r:L1\",\"ta\":\"pb-req-r:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-req-r:L2\",\"ta\":\"pb-req-r:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"4ee7d482f83f\",\"ok\":true,\"r\":\"pb-req-r:L3\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb-req-r:L4\",\"ta\":\"pb-req-r:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"0c3c2e9905fa\",\"ok\":true,\"r\":\"pb-req-r:L5\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-req-r\",\"turns\":1,\"prompts\":1,\"calls\":2,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-rewind.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-rewin:L1\",\"ta\":\"pb-rewin:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"turn\",\"a\":\"pb-rewin:L6\",\"ta\":\"pb-rewin:T002\",\"ch\":\"typed\",\"n\":8}\n{\"k\":\"call\",\"a\":\"pb-rewin:L7\",\"ta\":\"pb-rewin:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"0c3c2e9905fa\",\"ok\":true,\"r\":\"pb-rewin:L8\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-rewin\",\"turns\":2,\"prompts\":2,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-selfloop.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-selfl:L1\",\"ta\":\"pb-selfl:T001\",\"ch\":\"typed\",\"n\":13}\n{\"k\":\"call\",\"a\":\"pb-selfl:L2\",\"ta\":\"pb-selfl:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":true,\"r\":\"pb-selfl:L3\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": "memobrain skeleton: warning: '<dir>/pb-selfloop.jsonl': 1 record sits on a parentUuid cycle or below one (following the parent links never reaches the start of the session), so the live path through it may be incomplete.\n"
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-selfl\",\"turns\":1,\"prompts\":1,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": "memobrain stats: warning: '<dir>/pb-selfloop.jsonl': 1 record sits on a parentUuid cycle or below one (following the parent links never reaches the start of the session), so the live path through it may be incomplete.\n"
+  }
+ },
+ "pb-shape1-after.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-shape:L5\",\"ta\":\"pb-shape:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"turn\",\"a\":\"pb-shape:L7\",\"ta\":\"pb-shape:T002\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-shape:L8\",\"ta\":\"pb-shape:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7b7683b3cfb4\",\"ok\":true,\"r\":\"pb-shape:L9\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-shape\",\"turns\":2,\"prompts\":2,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-stale-fork.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-stale:L1\",\"ta\":\"pb-stale:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-stale:L5\",\"ta\":\"pb-stale:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7a7d70a12119\",\"ok\":true,\"r\":\"pb-stale:L6\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb-stale:L7\",\"ta\":\"pb-stale:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"d7b98a4ad1a3\",\"ok\":true,\"r\":\"pb-stale:L8\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-stale\",\"turns\":1,\"prompts\":1,\"calls\":2,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-stats.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-stats:L1\",\"ta\":\"pb-stats:T001\",\"ch\":\"typed\",\"n\":14}\n{\"k\":\"call\",\"a\":\"pb-stats:L2\",\"ta\":\"pb-stats:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"exit-2\",\"r\":\"pb-stats:L3\",\"out\":\"682584e6b81c\",\"n\":20}\n{\"k\":\"call\",\"a\":\"pb-stats:L4\",\"ta\":\"pb-stats:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":null,\"r\":null,\"out\":null,\"n\":null}\n{\"k\":\"call\",\"a\":\"pb-stats:L5\",\"ta\":\"pb-stats:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"exit-2\",\"r\":\"pb-stats:L6\",\"out\":\"682584e6b81c\",\"n\":20}\n{\"k\":\"call\",\"a\":\"pb-stats:L7\",\"ta\":\"pb-stats:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":true,\"r\":\"pb-stats:L8\",\"out\":\"34d915e36cf7\",\"n\":11}\n{\"k\":\"turn\",\"a\":\"pb-stats:L10\",\"ta\":\"pb-stats:T002\",\"ch\":\"typed\",\"n\":14}\n{\"k\":\"call\",\"a\":\"pb-stats:L11\",\"ta\":\"pb-stats:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"exit-2\",\"r\":\"pb-stats:L12\",\"out\":\"682584e6b81c\",\"n\":20}\n{\"k\":\"call\",\"a\":\"pb-stats:L13\",\"ta\":\"pb-stats:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"exit-2\",\"r\":\"pb-stats:L14\",\"out\":\"682584e6b81c\",\"n\":20}\n{\"k\":\"call\",\"a\":\"pb-stats:L15\",\"ta\":\"pb-stats:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":true,\"r\":\"pb-stats:L16\",\"out\":\"34d915e36cf7\",\"n\":11}\n{\"k\":\"call\",\"a\":\"pb-stats:L17\",\"ta\":\"pb-stats:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":true,\"r\":\"pb-stats:L18\",\"out\":\"34d915e36cf7\",\"n\":11}\n{\"k\":\"turn\",\"a\":\"pb-stats:L20\",\"ta\":\"pb-stats:T003\",\"ch\":\"typed\",\"n\":14}\n{\"k\":\"call\",\"a\":\"pb-stats:L21\",\"ta\":\"pb-stats:T003\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"exit-2\",\"r\":\"pb-stats:L22\",\"out\":\"682584e6b81c\",\"n\":20}\n{\"k\":\"call\",\"a\":\"pb-stats:L23\",\"ta\":\"pb-stats:T003\",\"tool\":\"Bash\",\"verb\":\"npm\",\"in\":\"9178ac939ad9\",\"ok\":true,\"r\":\"pb-stats:L24\",\"out\":\"34d915e36cf7\",\"n\":11}\n{\"k\":\"call\",\"a\":\"pb-stats:L25\",\"ta\":\"pb-stats:T003\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":true,\"r\":\"pb-stats:L26\",\"out\":\"34d915e36cf7\",\"n\":11}\n{\"k\":\"turn\",\"a\":\"pb-stats:L28\",\"ta\":\"pb-stats:T004\",\"ch\":\"typed\",\"n\":14}\n{\"k\":\"call\",\"a\":\"pb-stats:L29\",\"ta\":\"pb-stats:T004\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":false,\"ek\":\"exit-2\",\"r\":\"pb-stats:L30\",\"out\":\"682584e6b81c\",\"n\":20}\n{\"k\":\"call\",\"a\":\"pb-stats:L31\",\"ta\":\"pb-stats:T004\",\"tool\":\"Read\",\"verb\":\"(none)\",\"in\":\"cf35b664f0e8\",\"ok\":false,\"ek\":\"exit-2\",\"r\":\"pb-stats:L32\",\"out\":\"682584e6b81c\",\"n\":20}\n{\"k\":\"call\",\"a\":\"pb-stats:L33\",\"ta\":\"pb-stats:T004\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":true,\"r\":\"pb-stats:L34\",\"out\":\"34d915e36cf7\",\"n\":11}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-stats\",\"turns\":4,\"prompts\":4,\"calls\":14,\"failures\":7,\"unanswered\":1,\"errorClasses\":{\"exit-2\":7},\"retries\":5,\"detours\":2,\"maxHops\":3,\"hopsOver2\":2}\n",
+   "err": ""
+  }
+ },
+ "pb-tui.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-tui.j:L1\",\"ta\":\"pb-tui.j:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-tui.j:L2\",\"ta\":\"pb-tui.j:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"51af8e8de7b7\",\"ok\":true,\"r\":\"pb-tui.j:L3\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"turn\",\"a\":\"pb-tui.j:L5\",\"ta\":\"pb-tui.j:T002\",\"ch\":\"typed\",\"n\":15}\n{\"k\":\"call\",\"a\":\"pb-tui.j:L6\",\"ta\":\"pb-tui.j:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7a7d70a12119\",\"ok\":true,\"r\":\"pb-tui.j:L7\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"turn\",\"a\":\"pb-tui.j:L10\",\"ta\":\"pb-tui.j:T003\",\"ch\":\"typed\",\"n\":21}\n{\"k\":\"turn\",\"a\":\"pb-tui.j:L12\",\"ta\":\"pb-tui.j:T004\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"call\",\"a\":\"pb-tui.j:L13\",\"ta\":\"pb-tui.j:T004\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"d7b98a4ad1a3\",\"ok\":true,\"r\":\"pb-tui.j:L14\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-tui.j\",\"turns\":4,\"prompts\":4,\"calls\":3,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-two-leaves-rev.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-two-l:L1\",\"ta\":\"pb-two-l:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"turn\",\"a\":\"pb-two-l:L6\",\"ta\":\"pb-two-l:T002\",\"ch\":\"typed\",\"n\":11}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-two-l\",\"turns\":2,\"prompts\":2,\"calls\":0,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-two-leaves.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb-two-l:L1\",\"ta\":\"pb-two-l:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"turn\",\"a\":\"pb-two-l:L4\",\"ta\":\"pb-two-l:T002\",\"ch\":\"typed\",\"n\":11}\n{\"k\":\"call\",\"a\":\"pb-two-l:L5\",\"ta\":\"pb-two-l:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"eebb873c316b\",\"ok\":true,\"r\":\"pb-two-l:L6\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-two-l\",\"turns\":2,\"prompts\":2,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb-unknown6.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "",
+   "err": "memobrain skeleton: warning: '<dir>/pb-unknown6.jsonl' has no conversation records (no record carries both uuid and parentUuid; record types found: a, b, c, d, e, f), so it adds no lines. Conversation transcripts are the <session>.jsonl files in ~/.claude/projects/<project>/ and the agent-<id>.jsonl files under <session>/subagents/.\n"
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-unkno\",\"turns\":0,\"prompts\":0,\"calls\":0,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": "memobrain stats: warning: '<dir>/pb-unknown6.jsonl' has no conversation records (no record carries both uuid and parentUuid; record types found: a, b, c, d, e, f), so its counts are 0. Conversation transcripts are the <session>.jsonl files in ~/.claude/projects/<project>/ and the agent-<id>.jsonl files under <session>/subagents/.\n"
+  }
+ },
+ "pb-unknown7.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "",
+   "err": "memobrain skeleton: warning: '<dir>/pb-unknown7.jsonl' has no conversation records (no record carries both uuid and parentUuid; record types found: (none), (withheld), a, b, c, e, and 1 more), so it adds no lines. Conversation transcripts are the <session>.jsonl files in ~/.claude/projects/<project>/ and the agent-<id>.jsonl files under <session>/subagents/.\n"
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb-unkno\",\"turns\":0,\"prompts\":0,\"calls\":0,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": "memobrain stats: warning: '<dir>/pb-unknown7.jsonl' has no conversation records (no record carries both uuid and parentUuid; record types found: (none), (withheld), a, b, c, e, and 1 more), so its counts are 0. Conversation transcripts are the <session>.jsonl files in ~/.claude/projects/<project>/ and the agent-<id>.jsonl files under <session>/subagents/.\n"
+  }
+ },
+ "pb2-bash.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-bash:L1\",\"ta\":\"pb2-bash:T001\",\"ch\":\"typed\",\"n\":6}\n{\"k\":\"call\",\"a\":\"pb2-bash:L2\",\"ta\":\"pb2-bash:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"6c563bd9660e\",\"ok\":true,\"r\":\"pb2-bash:L3\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-bash:L4\",\"ta\":\"pb2-bash:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"33117b9054d0\",\"ok\":true,\"r\":\"pb2-bash:L5\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-bash:L6\",\"ta\":\"pb2-bash:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"9a673896a008\",\"ok\":true,\"r\":\"pb2-bash:L7\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-bash:L8\",\"ta\":\"pb2-bash:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"93c873b856f5\",\"ok\":true,\"r\":\"pb2-bash:L9\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-bash:L10\",\"ta\":\"pb2-bash:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"902b20d39bd0\",\"ok\":true,\"r\":\"pb2-bash:L11\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-bash:L12\",\"ta\":\"pb2-bash:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"ebe894497f4b\",\"ok\":true,\"r\":\"pb2-bash:L13\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-bash:L14\",\"ta\":\"pb2-bash:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"795ae64b607b\",\"ok\":true,\"r\":\"pb2-bash:L15\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-bash:L16\",\"ta\":\"pb2-bash:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"b00476df9b5c\",\"ok\":true,\"r\":\"pb2-bash:L17\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-bash:L18\",\"ta\":\"pb2-bash:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"6b386ffe0d99\",\"ok\":true,\"r\":\"pb2-bash:L19\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-bash:L20\",\"ta\":\"pb2-bash:T001\",\"tool\":\"Bash\",\"verb\":\"(withheld)\",\"in\":\"23c8180e3066\",\"ok\":true,\"r\":\"pb2-bash:L21\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-bash:L22\",\"ta\":\"pb2-bash:T001\",\"tool\":\"NotebookEdit\",\"verb\":\"(none)\",\"in\":\"af658eb60d05\",\"ok\":true,\"r\":\"pb2-bash:L23\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-bash\",\"turns\":1,\"prompts\":1,\"calls\":11,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-blockindex.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-bloc:L1\",\"ta\":\"pb2-bloc:T001\",\"ch\":\"typed\",\"n\":6}\n{\"k\":\"call\",\"a\":\"pb2-bloc:L2\",\"ta\":\"pb2-bloc:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"51af8e8de7b7\",\"ok\":true,\"r\":\"pb2-bloc:L5\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-bloc:L3\",\"ta\":\"pb2-bloc:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7a7d70a12119\",\"ok\":true,\"r\":\"pb2-bloc:L4\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-bloc\",\"turns\":1,\"prompts\":1,\"calls\":2,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-head-after.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-head:L5\",\"ta\":\"pb2-head:T001\",\"ch\":\"typed\",\"n\":9}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-head\",\"turns\":1,\"prompts\":1,\"calls\":0,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-orphan-child-first.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-orph:L2\",\"ta\":\"pb2-orph:T001\",\"ch\":\"typed\",\"n\":17}\n{\"k\":\"call\",\"a\":\"pb2-orph:L3\",\"ta\":\"pb2-orph:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"b3e07ab2ce3c\",\"ok\":true,\"r\":\"pb2-orph:L4\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-orph\",\"turns\":1,\"prompts\":1,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-orphan-two.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-orph:L1\",\"ta\":\"pb2-orph:T001\",\"ch\":\"typed\",\"n\":14}\n{\"k\":\"turn\",\"a\":\"pb2-orph:L3\",\"ta\":\"pb2-orph:T002\",\"ch\":\"typed\",\"n\":14}\n{\"k\":\"call\",\"a\":\"pb2-orph:L4\",\"ta\":\"pb2-orph:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7a7d70a12119\",\"ok\":true,\"r\":\"pb2-orph:L5\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-orph\",\"turns\":2,\"prompts\":2,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-parallel3.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-para:L1\",\"ta\":\"pb2-para:T001\",\"ch\":\"typed\",\"n\":6}\n{\"k\":\"call\",\"a\":\"pb2-para:L2\",\"ta\":\"pb2-para:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"51af8e8de7b7\",\"ok\":true,\"r\":\"pb2-para:L7\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-para:L3\",\"ta\":\"pb2-para:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7a7d70a12119\",\"ok\":true,\"r\":\"pb2-para:L6\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"call\",\"a\":\"pb2-para:L4\",\"ta\":\"pb2-para:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"d7b98a4ad1a3\",\"ok\":true,\"r\":\"pb2-para:L5\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-para\",\"turns\":1,\"prompts\":1,\"calls\":3,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-partial-late.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-part:L1\",\"ta\":\"pb2-part:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"turn\",\"a\":\"pb2-part:L3\",\"ta\":\"pb2-part:T002\",\"ch\":\"typed\",\"n\":8}\n{\"k\":\"call\",\"a\":\"pb2-part:L4\",\"ta\":\"pb2-part:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"04667f43cad2\",\"ok\":true,\"r\":\"pb2-part:L5\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"turn\",\"a\":\"pb2-part:L8\",\"ta\":\"pb2-part:T003\",\"ch\":\"typed\",\"n\":9}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-part\",\"turns\":3,\"prompts\":3,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-repeat-head.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-repe:L3\",\"ta\":\"pb2-repe:T001\",\"ch\":\"typed\",\"n\":21}\n{\"k\":\"turn\",\"a\":\"pb2-repe:L3\",\"ta\":\"pb2-repe:T002\",\"ch\":\"typed\",\"n\":21}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-repe\",\"turns\":2,\"prompts\":2,\"calls\":0,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-replay-req.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-repl:L1\",\"ta\":\"pb2-repl:T001\",\"ch\":\"typed\",\"n\":6}\n{\"k\":\"call\",\"a\":\"pb2-repl:L2\",\"ta\":\"pb2-repl:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"51af8e8de7b7\",\"ok\":true,\"r\":\"pb2-repl:L3\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"turn\",\"a\":\"pb2-repl:L5\",\"ta\":\"pb2-repl:T002\",\"ch\":\"typed\",\"n\":10}\n{\"k\":\"call\",\"a\":\"pb2-repl:L6\",\"ta\":\"pb2-repl:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"7a7d70a12119\",\"ok\":true,\"r\":\"pb2-repl:L7\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-repl\",\"turns\":2,\"prompts\":2,\"calls\":2,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-shape1-late.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-shap:L5\",\"ta\":\"pb2-shap:T001\",\"ch\":\"typed\",\"n\":9}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-shap\",\"turns\":1,\"prompts\":1,\"calls\":0,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-splice-late.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-spli:L1\",\"ta\":\"pb2-spli:T001\",\"ch\":\"typed\",\"n\":9}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-spli\",\"turns\":1,\"prompts\":1,\"calls\":0,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-string-first.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-stri:L1\",\"ta\":\"pb2-stri:T001\",\"ch\":\"typed\",\"n\":6}\n{\"k\":\"call\",\"a\":\"pb2-stri:L2\",\"ta\":\"pb2-stri:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"51af8e8de7b7\",\"ok\":true,\"r\":\"pb2-stri:L3\",\"out\":\"2689367b205c\",\"n\":2}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-stri\",\"turns\":1,\"prompts\":1,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-textfirst.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-text:L1\",\"ta\":\"pb2-text:T001\",\"ch\":\"typed\",\"n\":6}\n{\"k\":\"call\",\"a\":\"pb2-text:L2\",\"ta\":\"pb2-text:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"51af8e8de7b7\",\"ok\":true,\"r\":\"pb2-text:L3\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"turn\",\"a\":\"pb2-text:L3\",\"ta\":\"pb2-text:T002\",\"ch\":\"typed\",\"n\":9}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-text\",\"turns\":2,\"prompts\":2,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ },
+ "pb2-tui-deep.jsonl": {
+  "skeleton": {
+   "code": 0,
+   "out": "{\"k\":\"turn\",\"a\":\"pb2-tui-:L1\",\"ta\":\"pb2-tui-:T001\",\"ch\":\"typed\",\"n\":9}\n{\"k\":\"turn\",\"a\":\"pb2-tui-:L3\",\"ta\":\"pb2-tui-:T002\",\"ch\":\"typed\",\"n\":8}\n{\"k\":\"call\",\"a\":\"pb2-tui-:L5\",\"ta\":\"pb2-tui-:T002\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"04667f43cad2\",\"ok\":true,\"r\":\"pb2-tui-:L6\",\"out\":\"2689367b205c\",\"n\":2}\n{\"k\":\"turn\",\"a\":\"pb2-tui-:L10\",\"ta\":\"pb2-tui-:T003\",\"ch\":\"typed\",\"n\":9}\n",
+   "err": ""
+  },
+  "stats": {
+   "code": 0,
+   "out": "{\"session\":\"pb2-tui-\",\"turns\":3,\"prompts\":3,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
+   "err": ""
+  }
+ }
+}

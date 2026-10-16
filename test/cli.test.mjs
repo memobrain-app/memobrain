@@ -14,7 +14,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { chmodSync, closeSync, ftruncateSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, closeSync, ftruncateSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -152,9 +152,9 @@ const LABELS_EXPECTED = [
   ...[
     ['Skill', W], ['Agent', W], ['Read', 'Makefile'], ['Read', '.txt'], ['Bash', W], ['Bash', 'cat'],
     ['Bash', 'npm'], ['Bash', 'make'], ['Bash', 'make'], ['Bash', 'npm'], ['Bash', W], ['Bash', '[['],
-    ['Bash', 'ls'], ['Bash', 'make'], ['Bash', 'make'], ['Bash', 'make'], ['Bash', 'grep'], ['Bash', 'ls'],
-    ['Bash', 'git'], [W, W], ['Bash', 'wc'], ['Bash', 'make'], ['Bash', W], ['Bash', 'sudo'],
-    ['Bash', 'make'], ['Bash', 'for'], ['Bash', 'demo-run.sh'], ['Bash', 'systemctl'],
+    ['Bash', 'ls'], ['Bash', W], ['Bash', 'make'], ['Bash', 'make'], ['Bash', 'grep'], ['Bash', W],
+    ['Bash', 'git'], [W, W], ['Bash', 'wc'], ['Bash', W], ['Bash', W], ['Bash', 'sudo'],
+    ['Bash', 'make'], ['Bash', W], ['Bash', W], ['Bash', W],
   ].map(([tool, verb], i) => ({ k: 'call', id: `toolu_labels_${String(i + 1).padStart(2, '0')}`, tool, verb })),
   { k: 'turn', line: 59, ch: 'peer' },
   { k: 'turn', line: 61, ch: W },
@@ -223,6 +223,17 @@ const CASES = [
   { file: fixture('content.jsonl'), sid: 'content.', minPayload: 5, expected: [{ k: 'turn', line: 1, ch: 'typed' },
     { k: 'call', id: 'toolu_content_01', tool: 'Read', verb: '.png' }, { k: 'call', id: 'toolu_content_02', tool: 'Read', verb: '.png' },
     { k: 'call', id: 'toolu_content_03', tool: 'Bash', verb: 'make' }, { k: 'call', id: 'toolu_content_04', tool: 'Bash', verb: 'make' }] },
+  // the third set: what the second review found
+  { file: fixture('parallel-msgid.jsonl'), sid: 'parallel', minPayload: 5, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    { k: 'call', id: 'toolu_pmsg_01', tool: 'Read', verb: '.txt' }, { k: 'call', id: 'toolu_pmsg_02', tool: 'Read', verb: '.txt' }] },
+  { file: fixture('request-two-turns.jsonl'), sid: 'request-', minPayload: 6, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    { k: 'call', id: 'toolu_rtt_01', tool: 'Bash', verb: 'make' }, { k: 'call', id: 'toolu_rtt_02', tool: 'Bash', verb: 'make' },
+    { k: 'turn', line: 3, ch: 'typed' }] },
+  { file: fixture('errors2.jsonl'), sid: 'errors2.', minPayload: 14, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    ...[['Bash', 'make', 'exit-1'], ['Bash', 'make', 'exit-2'], ['Bash', 'make', 'hook-block:demo-gate'], ['Bash', 'make', 'hook-block:demo-check'],
+      ['Edit', '.txt', 'no-anchor'], ['Write', '.txt', 'not-read'], ['Edit', '.txt', 'other']].map(([tool, verb, ek], i) => ({ k: 'call', id: `toolu_errors2_${pad2(i + 1)}`, tool, verb, ek }))] },
+  { file: fixture('unicode.jsonl'), sid: 'unicode.', minPayload: 3, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    { k: 'call', id: 'toolu_unicode_01', tool: 'Read', verb: '.txt' }] },
 ];
 
 /** Every field of every expected line, computed from the raw records. */
@@ -532,7 +543,106 @@ test('withheld values: nothing that only label-shaped fields could carry reaches
   ];
   const output = run('skeleton', LABELS).out + run('stats', LABELS).out;
   for (const s of secrets) assert.ok(!output.includes(s), `the output contains '${s}'`);
-  assert.equal(parsed(run('skeleton', LABELS).out).filter((o) => o.verb === W || o.tool === W || o.ch === W).length, 7);
+  // 7 values that are not labels, and 6 commands whose words before the program are not all plain or passable
+  assert.equal(parsed(run('skeleton', LABELS).out).filter((o) => o.verb === W || o.tool === W || o.ch === W).length, 13);
+});
+
+test('README: every row of the table in "The Bash verb" is what the build prints', () => {
+  const readme = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'README.md'), 'utf8');
+  const section = readme.slice(readme.indexOf('### The Bash verb'), readme.indexOf('## What it reads'));
+  const rows = [...section.matchAll(/^\| `(.+?)` \| `(.+?)` /gm)].map(([, cmd, verb]) => [cmd.replaceAll('\\|', '|'), verb]);
+  assert.ok(rows.length >= 10, `only ${rows.length} rows were read from the README`);
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-readme-'));
+  try {
+    const lines = [JSON.stringify({ type: 'user', uuid: 'u', parentUuid: null, promptSource: 'typed', message: { role: 'user', content: 'the README examples' } })];
+    let parent = 'u';
+    rows.forEach(([cmd], i) => {
+      lines.push(JSON.stringify({ type: 'assistant', uuid: `a${i}`, parentUuid: parent, requestId: `r${i}`, message: { role: 'assistant', content: [{ type: 'tool_use', id: `t${i}`, name: 'Bash', input: { command: cmd } }] } }));
+      lines.push(JSON.stringify({ type: 'user', uuid: `s${i}`, parentUuid: `a${i}`, toolUseResult: {}, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: `t${i}`, content: 'an invented result' }] } }));
+      parent = `s${i}`;
+    });
+    lines.push(JSON.stringify({ type: 'last-prompt', leafUuid: parent }));
+    writeFileSync(join(dir, 'readme.jsonl'), lines.join('\n') + '\n');
+    const verbs = parsed(run('skeleton', join(dir, 'readme.jsonl')).out).filter((o) => o.k === 'call').map((o) => o.verb);
+    assert.deepEqual(rows.map(([cmd, verb], i) => [cmd, verbs[i]]), rows);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('review transcripts: every output is the one recorded (test/record-review-outputs.mjs)', () => {
+  const dir = fixture('review');
+  const expected = JSON.parse(readFileSync(join(dir, 'expected.json'), 'utf8'));
+  const names = readdirSync(dir).filter((f) => f.endsWith('.jsonl')).sort();
+  assert.deepEqual(names, Object.keys(expected).sort());
+  for (const name of names) for (const cmd of ['skeleton', 'stats']) {
+    const r = run(cmd, join(dir, name));
+    assert.deepEqual({ code: r.code, out: r.out, err: r.err.split(dir).join('<dir>') }, expected[name][cmd], `${cmd} ${name}`);
+  }
+});
+
+test('a file with no conversation records: the warning names its record types, each label-checked', () => {
+  const r = run('skeleton', fixture('types-only.jsonl'));
+  assert.equal(r.code, 0);
+  assert.equal(r.out, '');
+  assert.match(r.err, /record types found: \(withheld\), summary\), so it adds no lines\./);
+  assert.ok(!r.err.includes('ZQXW01'), 'free text from a type field reached stderr');
+});
+
+test('crafted shapes end in time and keep their counts: forked parallel calls, a long late branch, one request id on every turn, values nested deep', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-crafted-'));
+  const timed = (args, ms) => { const t0 = Date.now(); const r = run(...args); assert.equal(r.code, 0, r.err); assert.ok(Date.now() - t0 < ms, `${args[1]} took ${Date.now() - t0} ms`); return r; };
+  const rec = (o) => JSON.stringify({ isSidechain: false, userType: 'external', cwd: '/w', version: '2.0.0', sessionId: 's', ...o });
+  const use = (id, cmd) => ({ role: 'assistant', content: [{ type: 'tool_use', id, name: 'Bash', input: { command: cmd } }] });
+  const res = (id) => ({ role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'an invented output' }] });
+  try {
+    // (1) 8,000 turns of two parallel calls whose results come back in reverse order: every turn forks
+    let lines = [], parent = null;
+    for (let i = 0; i < 8000; i++) {
+      const p = `p${i}`, a = `a${i}`, b = `b${i}`, rb = `rb${i}`, ra = `ra${i}`;
+      lines.push(rec({ type: 'user', uuid: p, parentUuid: parent, promptSource: 'typed', message: { role: 'user', content: `invented prompt ${i}` } }));
+      lines.push(rec({ type: 'assistant', uuid: a, parentUuid: p, requestId: `req${i}`, message: { id: `m${i}`, ...use(`ta${i}`, 'make one') } }));
+      lines.push(rec({ type: 'assistant', uuid: b, parentUuid: a, requestId: `req${i}`, message: { id: `m${i}`, ...use(`tb${i}`, 'make two') } }));
+      lines.push(rec({ type: 'user', uuid: rb, parentUuid: b, toolUseResult: {}, message: res(`tb${i}`) }));
+      lines.push(rec({ type: 'user', uuid: ra, parentUuid: a, toolUseResult: {}, message: res(`ta${i}`) }));
+      parent = ra;
+    }
+    lines.push(JSON.stringify({ type: 'last-prompt', leafUuid: parent }));
+    writeFileSync(join(dir, 'forked.jsonl'), lines.join('\n') + '\n');
+    const forked = JSON.parse(timed(['stats', join(dir, 'forked.jsonl')], 15000).out);
+    assert.deepEqual([forked.turns, forked.calls], [8000, 16000]);
+    // (2) a late-written error after a branch of 200,000 records: the branch is spliced in, in a loop
+    lines = [rec({ type: 'user', uuid: 'P', parentUuid: null, promptSource: 'typed', message: { role: 'user', content: 'an invented long prompt' } })];
+    for (let i = 0; i < 200000; i++) lines.push(rec({ type: 'assistant', uuid: `x${i}`, parentUuid: i ? `x${i - 1}` : 'P', timestamp: `2026-08-01T12:${String(10 + Math.floor(i / 6000)).padStart(2, '0')}:00.000Z`, message: { role: 'assistant', content: [{ type: 'text', text: 'an invented step' }] } }));
+    lines.push(rec({ type: 'system', subtype: 'api_error', uuid: 'E', parentUuid: 'P', timestamp: '2026-08-01T12:00:30.000Z', content: 'an invented API error' }));
+    lines.push(rec({ type: 'assistant', uuid: 'T', parentUuid: 'E', timestamp: '2026-08-01T13:00:00.000Z', message: { role: 'assistant', content: [{ type: 'text', text: 'an invented end' }] } }));
+    lines.push(JSON.stringify({ type: 'last-prompt', leafUuid: 'T' }));
+    writeFileSync(join(dir, 'late.jsonl'), lines.join('\n') + '\n');
+    assert.equal(JSON.parse(timed(['stats', join(dir, 'late.jsonl')], 20000).out).turns, 1);
+    // (3) one request id on every turn's call record: each call is printed once, in the first turn that holds it
+    lines = []; parent = null;
+    for (let i = 0; i < 2000; i++) {
+      lines.push(rec({ type: 'user', uuid: `q${i}`, parentUuid: parent, promptSource: 'typed', message: { role: 'user', content: `invented prompt ${i}` } }));
+      lines.push(rec({ type: 'assistant', uuid: `c${i}`, parentUuid: `q${i}`, requestId: 'req_same', message: { id: `n${i}`, ...use(`tc${i}`, 'make same') } }));
+      lines.push(rec({ type: 'user', uuid: `s${i}`, parentUuid: `c${i}`, toolUseResult: {}, message: res(`tc${i}`) }));
+      parent = `s${i}`;
+    }
+    lines.push(JSON.stringify({ type: 'last-prompt', leafUuid: parent }));
+    writeFileSync(join(dir, 'samereq.jsonl'), lines.join('\n') + '\n');
+    assert.equal(JSON.parse(timed(['stats', join(dir, 'samereq.jsonl')], 15000).out).calls, 2000);
+    // (4) values nested 10,000 and 100,000 deep, in an input, a result and wireToolInputs: no line is lost
+    const deep = (n) => '['.repeat(n) + ']'.repeat(n);
+    const deepFile = [
+      rec({ type: 'user', uuid: 'u', parentUuid: null, promptSource: 'typed', message: { role: 'user', content: 'an invented deep prompt' } }),
+      `{"type":"assistant","uuid":"d","parentUuid":"u","wireToolInputs":{"td":{"command":"make deep","extra":${deep(10000)}}},"message":{"role":"assistant","content":[{"type":"tool_use","id":"td","name":"Bash","input":{"command":"make deep","extra":${deep(10000)}}}]}}`,
+      `{"type":"user","uuid":"r","parentUuid":"d","toolUseResult":{},"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"td","content":[{"type":"image","source":${deep(100000)}}]}]}}`,
+      JSON.stringify({ type: 'last-prompt', leafUuid: 'r' }),
+    ];
+    writeFileSync(join(dir, 'deep.jsonl'), deepFile.join('\n') + '\n');
+    const r = timed(['skeleton', join(dir, 'deep.jsonl')], 15000);
+    const call = parsed(r.out).find((o) => o.k === 'call');
+    assert.equal(call.verb, 'make');
+    for (const v of [call.in, call.out]) assert.match(v, /^(?:[0-9a-f]{12}|\(too deep\))$/);
+    if (call.in === '(too deep)' || call.out === '(too deep)') assert.match(r.err, /hold a value nested too deeply to hash/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 // ---- errors ---------------------------------------------------------------------------------

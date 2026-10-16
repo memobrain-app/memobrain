@@ -287,9 +287,9 @@ function buildRequests(records, replay) {
         if (r.type !== 'assistant' || replay[i])
             continue; // a replayed block is not a second block
         const a = r;
-        // Records written before requestId existed (the oldest versions) still deserve a group
-        // of their own rather than being merged into one bucket keyed on undefined.
-        const key = a.requestId ?? `uuid:${a.uuid}`;
+        // Without requestId (older versions) the records of one response share message.id; with neither, a record is
+        // a group of its own rather than being merged into one bucket keyed on undefined.
+        const key = a.requestId ?? (a.message?.id ? `msg:${a.message.id}` : `uuid:${a.uuid}`);
         let g = byId.get(key);
         if (!g) {
             g = {
@@ -323,13 +323,16 @@ function buildRequests(records, replay) {
     return order.map((k) => byId.get(k));
 }
 // ---- 9. Tool calls: trap 4 -------------------------------------------------
-/** Key order must not decide whether two inputs "differ", so sort it away. No dependency, browser-safe. */
-function stable(v) {
+/** Key order must not decide whether two inputs "differ", so sort it away. No dependency, browser-safe. Below 1,000
+ *  levels a value is not compared (a crafted file; the recursion would overflow the stack). */
+function stable(v, depth = 0) {
+    if (depth > 1000)
+        return '"(deep)"';
     if (v === null || typeof v !== 'object')
         return JSON.stringify(v) ?? 'undefined';
     if (Array.isArray(v))
-        return '[' + v.map(stable).join(',') + ']';
-    return '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + stable(v[k])).join(',') + '}';
+        return '[' + v.map((x) => stable(x, depth + 1)).join(',') + ']';
+    return '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + stable(v[k], depth + 1)).join(',') + '}';
 }
 function buildToolCalls(nodes, records, replay) {
     const calls = new Map();
@@ -628,13 +631,25 @@ export function repairedLivePath(t) {
         }
         if (!last)
             continue;
-        const upToP = pathTo(t, P.uuid).length;
-        const branch = pathTo(t, last.uuid).slice(upToP);
+        const branch = [];
+        {
+            const g = new Set();
+            let x = last;
+            while (x && x !== P && !g.has(x)) {
+                g.add(x);
+                branch.push(x);
+                x = x.parent;
+            }
+            if (x !== P)
+                branch.length = 0;
+            branch.reverse();
+        }
         const written = branch.every((x) => x.index < E.index);
         const runsPast = branch.some((x) => ts(x) > ts(E));
         if (!branch.length || !written || !runsPast)
             continue;
-        out.push(...branch);
+        for (const x of branch)
+            out.push(x);
         splices.push({ error: E, fork: P, branch, kind: 'late-write', lateType: r.type + (r.subtype ? ':' + r.subtype : '') });
     }
     return { path: out, from: base.from, bridges, splices, extension, compactions };
@@ -657,9 +672,10 @@ export function turnsOf(t, path) {
     for (const g of t.requests)
         for (const r of g.records)
             reqByUuid.set(r.uuid, g);
-    // A call belongs to the turn whose path holds ANY record of its API request. Calls run in parallel are
+    // A call belongs to the FIRST turn whose path holds a record of its API request. Calls run in parallel are
     //   separate records of one request; when their results come back out of order the path runs through only some
-    //   of them, and the others were dropped from the turn (trap 1 again: the request, not the record, is the unit).
+    //   of them, and the others would be dropped from the turn (the request, not the record, is the unit). A request
+    //   whose records fall in two turns gives its calls to the first, so no call is counted twice.
     const byReq = new Map(), byNode = new Map();
     for (const c of t.toolCalls) {
         const g = reqByUuid.get(c.callNode.uuid);
@@ -676,6 +692,7 @@ export function turnsOf(t, path) {
         else
             byNode.set(c.callNode.index, [c]);
     }
+    const assigned = new Set(), claimed = new Set();
     for (const turn of out) {
         const seen = new Set();
         for (const n of turn.records) {
@@ -685,14 +702,21 @@ export function turnsOf(t, path) {
                 turn.requests.push(g);
             }
         }
-        const calls = new Set();
+        const calls = [];
+        const take = (c) => { if (!assigned.has(c)) {
+            assigned.add(c);
+            calls.push(c);
+        } };
         for (const g of turn.requests)
-            for (const c of byReq.get(g) ?? [])
-                calls.add(c);
+            if (!claimed.has(g)) {
+                claimed.add(g);
+                for (const c of byReq.get(g) ?? [])
+                    take(c);
+            }
         for (const n of turn.records)
             for (const c of byNode.get(n.index) ?? [])
-                calls.add(c);
-        turn.toolCalls = [...calls].sort((a, b) => a.callNode.index - b.callNode.index);
+                take(c);
+        turn.toolCalls = calls.sort((a, b) => a.callNode.index - b.callNode.index);
     }
     return out;
 }
