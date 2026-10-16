@@ -47,8 +47,8 @@ memobrain reads only the files it is given, writes only to stdout and stderr,
 and uses no network.
 
 It follows each session's live path: the branch the session ended on, as the
-transcript's own last-prompt record names it (without one, the deepest branch),
-joined across compactions and late-written error records. Every payload is
+transcript's own last-prompt record names it (without one, the branch of the
+last record written), joined across compactions and late-written error records. Every payload is
 replaced by an address and a hash. An address is <prefix>:L<line number>: the
 prefix is the file name's first 8 characters, or, for a subagent's
 agent-<id>.jsonl, agent- and the id's first 8.
@@ -73,7 +73,11 @@ skeleton, one line per tool call, after the turn it belongs to:
                 command, builtin, exec, nohup, nice and timeout (with their
                 options); a path is cut to its last part, and a command that
                 only assigns values is labelled by the command inside its
-                first $(...). Read, Edit, Write, NotebookEdit: the file's
+                first $(...); a wrapper with nothing after it is the program.
+                The reading fails closed: a here-document, an arithmetic
+                command, a case inside $(...), an unclosed quote or an unknown
+                wrapper option before the program, or a function definition,
+                gives (withheld). Read, Edit, Write, NotebookEdit: the file's
                 extension (its name when it has none). Agent, Task: the
                 subagent type. Skill: the skill name. Other tools: the name
   in            sha256 of the input as JSON (a missing input counts as {}),
@@ -82,16 +86,21 @@ skeleton, one line per tool call, after the turn it belongs to:
                 no result was recorded (the session ended, or the file was
                 cut, before the call returned)
   ek            error class, only when the call failed: hook-block:<hook
-                script name>, hook-block, no-anchor, not-read, exit-<code>,
-                bad-input, denied, other
+                script name> or hook-block (Claude Code's own format only:
+                PreToolUse:<tool> hook error: [<command>]), no-anchor,
+                not-read, exit-<code> (the leading "Exit code N"), bad-input,
+                denied, other
   r             address of the result, or null when none was recorded
-  out           sha256 of the result text, first 12 hex characters (null when
-                no result was recorded)
+  out           sha256 of the result text, first 12 hex characters; of the
+                whole result as JSON when it holds anything but text (null
+                when no result was recorded)
   n             length of the result text, JavaScript string length (null
                 when no result was recorded)
 
-A label (tool, verb, ch) is printed only when it looks like one: at most 64
-letters, digits and . _ : + -. Anything else prints as (withheld).
+A label (tool, verb, ch, the hook name in ek) is printed only when it looks
+like one: at most 64 letters, digits and . _ : + - (a file name or extension:
+without ':'; the shell's [ and [[ as they are). Anything else prints as
+(withheld).
 
 stats, one line per file:
   session       the file's address prefix
@@ -123,180 +132,274 @@ const TRANSCRIPTS_HINT = 'Claude Code keeps transcripts in ~/.claude/projects/<p
 const h12 = (s: string): string => createHash('sha256').update(s).digest('hex').slice(0, 12);
 const pad3 = (n: number): string => String(n).padStart(3, '0');
 
-/** Every label printed from a transcript (tool, verb, channel) must LOOK like a label: letters, digits
- *  and . _ : + -, at most 64 characters. Anything else is a value that may carry payload, and prints
- *  as (withheld). */
+/** Every label printed from a transcript must LOOK like a label: letters, digits and . _ : + -, at most 64
+ *  characters; a file's name or extension, the same without ':'. Anything else is a value that may carry payload,
+ *  and prints as (withheld). */
 const LABEL = /^[\w.:+-]{1,64}$/;
+const FILE_LABEL = /^[\w.+-]{1,64}$/;
 const WITHHELD = '(withheld)';
-const label = (v: unknown, fallback: string): string => (!v ? fallback : typeof v === 'string' && LABEL.test(v) ? v : WITHHELD);
+const label = (v: unknown, fallback: string, re: RegExp = LABEL): string =>
+  (!v ? fallback : typeof v === 'string' && re.test(v) ? v : WITHHELD);
+const isRecord = (v: unknown): v is Record<string, any> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 // ---- the shell command's verb ---------------------------------------------------------------
-// A small lexer, enough to find the word in COMMAND position: quotes, escapes, $(...), `...` and
-// ${...} are read as parts of one word, so an argument, a quoted string or the output of a
-// substitution can never be taken for the command.
+// A small lexer that FAILS CLOSED. It names the word in COMMAND position only when everything before that word is
+// understood: plain words, quotes ($'...' with its escapes), $(...), `...`, ${...} with quotes nested in it, $((...)),
+// $[...], NAME=(arrays), redirections, comments. Anything it does not model, met BEFORE the verb (a here-document, an
+// arithmetic command ((...)), a case inside $(...), an unclosed quote or substitution, a wrapper option it does not
+// know, more than 64 tokens), makes the verb (withheld): a wrong guess could print a word of payload, a withheld verb
+// cannot. Tokens are read lazily, so what comes AFTER the verb (cat <<EOF, python3 - <<'EOF') is never examined.
 
-type Tok = { op: string } | { word: string; plain: boolean };
+class Unsure extends Error {}
 
-function skipQuoted(s: string, j: number, close: string): number {
+/** From just after an opening quote, the index just after its close. ' has no escapes; $'...' and the others do;
+ *  " holds $(...), ${...} and `...`. A quote never closed is Unsure. */
+function skipQuoted(s: string, j: number, close: string, ansi = false, depth = 0): number {
+  if (depth > 40) throw new Unsure();
   while (j < s.length) {
     const c = s[j];
-    if (c === '\\' && close !== "'") { j += 2; continue; }
+    if (c === '\\' && (close !== "'" || ansi)) { j += 2; continue; }
     if (c === close) return j + 1;
-    if (close === '"' && c === '$' && s[j + 1] === '(') { j = skipParen(s, j + 2); continue; }
-    if (close === '"' && c === '`') { j = skipQuoted(s, j + 1, '`'); continue; }
+    if (close === '"' && c === '$' && (s[j + 1] === '(' || s[j + 1] === '{')) {
+      j = skipParen(s, j + 2, s[j + 1], s[j + 1] === '(' ? ')' : '}', depth + 1);
+      continue;
+    }
+    if (close === '"' && c === '`') { j = skipQuoted(s, j + 1, '`', false, depth + 1); continue; }
     j++;
   }
-  return s.length;
+  throw new Unsure();
 }
-/** From just after "$(" (or "${" with open "{"), the index just after the matching close. */
-function skipParen(s: string, j: number, open = '(', close = ')'): number {
-  let depth = 1;
+
+const wordStart = (s: string, j: number, start: number): boolean => j === start || /[\s;&|(]/.test(s[j - 1]);
+
+/** From just after an opener, the index just after the matching closer, with quotes, comments and nesting read.
+ *  A here-document or a case inside, or a closer never found, is Unsure. */
+function skipParen(s: string, j: number, open = '(', close = ')', depth = 0): number {
+  if (depth > 40) throw new Unsure();
+  const start = j;
+  let d = 1;
   while (j < s.length) {
     const c = s[j];
     if (c === '\\') { j += 2; continue; }
-    if (c === "'" || c === '"' || c === '`') { j = skipQuoted(s, j + 1, c); continue; }
-    if (c === open) depth++;
-    else if (c === close && --depth === 0) return j + 1;
+    if (c === "'") { j = skipQuoted(s, j + 1, "'", s[j - 1] === '$', depth + 1); continue; }
+    if (c === '"' || c === '`') { j = skipQuoted(s, j + 1, c, false, depth + 1); continue; }
+    if (c === '#' && wordStart(s, j, start)) { while (j < s.length && s[j] !== '\n') j++; continue; }
+    if (c === '<' && s[j + 1] === '<' && s[j + 2] !== '<') throw new Unsure();
+    if (open === '(' && s.startsWith('case', j) && !/\w/.test(s[j + 4] ?? '') && wordStart(s, j, start)) throw new Unsure();
+    if (c === open) d++;
+    else if (c === close && --d === 0) return j + 1;
     j++;
   }
-  return s.length;
+  throw new Unsure();
 }
 
-/** The first tokens of a command line: words, and the operators between them. */
-function lex(s: string, max = 64): Tok[] {
-  const toks: Tok[] = [];
+type Tok = { op: string } | { word: string; plain: boolean };
+
+/** The tokens of a command line, one at a time: words, and the operators between them. */
+function* tokens(s: string): Generator<Tok> {
   let i = 0;
-  while (i < s.length && toks.length < max) {
+  while (i < s.length) {
     const c = s[i];
     if (c === ' ' || c === '\t' || c === '\r') { i++; continue; }
     if (c === '\\' && s[i + 1] === '\n') { i += 2; continue; }
-    if (c === '\n') { toks.push({ op: '\n' }); i++; continue; }
+    if (c === '\n') { yield { op: '\n' }; i++; continue; }
     if (c === '#') { while (i < s.length && s[i] !== '\n') i++; continue; }
+    if (s.startsWith('((', i)) throw new Unsure();                      // an arithmetic command
     const two = s.slice(i, i + 2);
-    if (two === '&&' || two === '||') { toks.push({ op: two }); i += 2; continue; }
-    if (c === '<' || c === '>') { let j = i; while (j < s.length && '<>&|'.includes(s[j])) j++; toks.push({ op: '<' }); i = j; continue; }
-    if (';&|()'.includes(c)) { toks.push({ op: c }); i++; continue; }
+    if (two === '&&' || two === '||') { yield { op: two }; i += 2; continue; }
+    if (c === '<' || c === '>' || two === '&>') {
+      let j = i;
+      while (j < s.length && '<>&|'.includes(s[j])) j++;
+      if (s.startsWith('<<', i) && !s.startsWith('<<<', i)) throw new Unsure();   // a here-document
+      yield { op: '<' };
+      i = j;
+      continue;
+    }
+    if (';&|()'.includes(c)) { yield { op: c }; i++; continue; }
     let j = i, plain = true;
     while (j < s.length) {
       const d = s[j];
       if (d === '(' && /^[A-Za-z_]\w*\+?=$/.test(s.slice(i, j))) { plain = false; j = skipParen(s, j + 1); continue; }   // NAME=(array)
       if (' \t\r\n;&|()<>'.includes(d)) break;
       if (d === '\\') { plain = false; j += 2; continue; }
+      if (d === '$' && s[j + 1] === "'") { plain = false; j = skipQuoted(s, j + 2, "'", true); continue; }
       if (d === "'" || d === '"' || d === '`') { plain = false; j = skipQuoted(s, j + 1, d); continue; }
-      if (d === '$' && s[j + 1] === '(') { plain = false; j = skipParen(s, j + 2); continue; }
-      if (d === '$' && s[j + 1] === '{') { plain = false; j = skipParen(s, j + 2, '{', '}'); continue; }
+      if (d === '$' && (s[j + 1] === '(' || s[j + 1] === '{' || s[j + 1] === '[')) {
+        plain = false;
+        j = skipParen(s, j + 2, s[j + 1], s[j + 1] === '(' ? ')' : s[j + 1] === '{' ? '}' : ']');
+        continue;
+      }
       if ('$*?['.includes(d)) plain = false;
       j++;
     }
-    toks.push({ word: s.slice(i, j), plain });
+    yield { word: s.slice(i, j), plain };
     i = j;
   }
-  return toks;
 }
 
-/** The text inside the first $(...) or `...` of an assignment's value (single quotes are literal). */
+/** The text inside the first $(...) or `...` of an assignment's value, quotes read as bash reads them. */
 function firstSubstitution(w: string): string | undefined {
-  for (let j = w.indexOf('=') + 1; j < w.length; j++) {
+  let j = w.indexOf('=') + 1, dq = false;
+  while (j < w.length) {
     const c = w[j];
-    if (c === '\\') { j++; continue; }
-    if (c === "'") { j = skipQuoted(w, j + 1, "'") - 1; continue; }
+    if (c === '\\') { j += 2; continue; }
+    if (!dq && c === "'") { j = skipQuoted(w, j + 1, "'", w[j - 1] === '$'); continue; }
+    if (c === '"') { dq = !dq; j++; continue; }
     if (c === '$' && w[j + 1] === '(' && w[j + 2] !== '(') return w.slice(j + 2, skipParen(w, j + 2) - 1);
+    if (c === '$' && (w[j + 1] === '{' || w[j + 1] === '(' || w[j + 1] === '[')) {
+      j = skipParen(w, j + 2, w[j + 1], w[j + 1] === '{' ? '}' : w[j + 1] === '(' ? ')' : ']');
+      continue;
+    }
     if (c === '`') return w.slice(j + 1, skipQuoted(w, j + 1, '`') - 1);
+    j++;
   }
+  if (dq) throw new Unsure();
   return undefined;
 }
 
 const ASSIGNMENT = /^[A-Za-z_]\w*(?:\[[^\]]*\])?\+?=/;
-/** Wrappers that run the command after them, and the options of theirs that take an argument. */
-const WRAPPERS: Record<string, string[]> = {
-  env: ['-u', '--unset', '-C', '--chdir', '-S', '--split-string'], time: [], command: [], builtin: [],
-  exec: ['-a'], nohup: [], nice: ['-n', '--adjustment'], timeout: ['-s', '--signal', '-k', '--kill-after'],
+/** Wrappers that run the command after them: their options without and with an argument. An option outside
+ *  these lists might take an argument, so it withholds the verb rather than guess. */
+const WRAPPERS: Record<string, { flags: string[]; withArg: string[] }> = {
+  env: { flags: ['-', '-i', '-0', '-v', '--ignore-environment', '--null', '--debug'], withArg: ['-u', '-C', '-P', '-a', '--unset', '--chdir', '--argv0'] },
+  time: { flags: ['-p', '-a', '-v', '-q', '--portability', '--append', '--verbose', '--quiet'], withArg: ['-o', '-f', '--output', '--format'] },
+  timeout: { flags: ['-v', '--verbose', '--preserve-status', '--foreground'], withArg: ['-s', '-k', '--signal', '--kill-after'] },
+  nice: { flags: [], withArg: ['-n', '--adjustment'] },
+  nohup: { flags: [], withArg: [] },
+  command: { flags: ['-p', '-v', '-V'], withArg: [] },
+  builtin: { flags: [], withArg: [] },
+  exec: { flags: ['-c', '-l'], withArg: ['-a'] },
 };
 
-/** The program a command word names: its last path part, when that part is a literal label. Quotes
- *  around a literal word are not part of the name; an expansion in the directory part does not
- *  matter (`$DIR/run.sh` is run.sh), anywhere else it withholds the word. */
-function commandLabel(w: string): string {
-  if (w === '[' || w === '[[') return w;
-  const last = w.slice(w.lastIndexOf('/') + 1);
-  return /[$`\\]/.test(last) ? WITHHELD : label(last.replace(/["']/g, ''), WITHHELD);
+/** Bash: the program in command position. Passed over on the way: separators, !, {, (, redirections, cd DIR
+ *  followed by && ; or a newline, NAME=value assignments, and the wrappers above with their options (and timeout's
+ *  duration); a wrapper with nothing after it is the program itself. A command that only assigns values is
+ *  labelled by the command inside its first $(...). [ and [[ are labels of their own; a function definition is
+ *  withheld. */
+function bashVerb(command: string, depth = 0): string {
+  try {
+    return readVerb(command, depth);
+  } catch (e) {
+    if (e instanceof Unsure) return WITHHELD;
+    throw e;
+  }
 }
 
-/** Bash: the first word in command position. Passed over on the way: separators, `!`, `{`, `(`,
- *  redirections, `cd DIR` followed by && ; or a newline, `NAME=value` assignments, and the
- *  wrappers above with their options (and timeout's duration). A command that only assigns values
- *  is labelled by the command inside its first $(...) or `...`. `[` and `[[` are labels of their own. */
-function bashVerb(command: string, depth = 0): string {
-  const toks = lex(command);
-  const redirection = (x: Tok | undefined) => x !== undefined && 'op' in x && x.op === '<';
+function readVerb(command: string, depth: number): string {
+  const it = tokens(command), buf: Tok[] = [];
+  let ended = false;
+  const at = (k: number): Tok | undefined => {
+    while (buf.length <= k && !ended) {
+      if (buf.length >= 64) throw new Unsure();
+      const n = it.next();
+      if (n.done) ended = true; else buf.push(n.value);
+    }
+    return buf[k];
+  };
+  // the verb is already certain when this looks one token on: what it cannot read there is not a definition
+  const peek = (k: number): Tok | undefined => { try { return at(k); } catch (e) { if (e instanceof Unsure) return undefined; throw e; } };
+  const op = (t: Tok | undefined, o?: string): boolean => t !== undefined && 'op' in t && (o === undefined || t.op === o);
+  const word = (t: Tok | undefined): t is { word: string; plain: boolean } => t !== undefined && 'word' in t;
   let k = 0, sub: string | undefined;
-  while (k < toks.length) {
-    const t = toks[k];
-    if ('op' in t) { k += t.op === '<' ? 2 : 1; continue; }        // a redirection's target goes with it
+  for (;;) {
+    const t = at(k);
+    if (t === undefined) break;
+    if (!word(t)) { k += t.op === '<' ? 2 : 1; continue; }             // a redirection's target goes with it
     const w = t.word;
     if (w === '!' || w === '{') { k++; continue; }
-    if (/^\d+$/.test(w) && redirection(toks[k + 1])) { k += 3; continue; }
+    if (/^\d+$/.test(w) && op(at(k + 1), '<')) { k += 3; continue; }
     if (ASSIGNMENT.test(w)) { sub ??= firstSubstitution(w); k++; continue; }
     if (w === 'cd') {
       let m = k + 1;
-      while (m < toks.length && ('word' in toks[m] || redirection(toks[m]))) m += redirection(toks[m]) ? 2 : 1;
-      const sep = toks[m];
-      if (sep && 'op' in sep && (sep.op === '&&' || sep.op === ';' || sep.op === '\n')) { k = m + 1; continue; }
+      for (;;) {
+        const x = at(m);
+        if (word(x)) { m++; continue; }
+        if (op(x, '<')) { m += 2; continue; }
+        break;
+      }
+      const sep = at(m);
+      if (op(sep, '&&') || op(sep, ';') || op(sep, '\n')) { k = m + 1; continue; }
       return 'cd';
     }
     if (t.plain && Object.hasOwn(WRAPPERS, w)) {
-      const withArg = WRAPPERS[w];
-      k++;
-      while (k < toks.length && 'word' in toks[k]) {
-        const o = (toks[k] as { word: string }).word;
-        if (o.startsWith('-')) { k += withArg.includes(o) ? 2 : 1; continue; }
-        if (w === 'env' && ASSIGNMENT.test(o)) { k++; continue; }
-        break;
+      const { flags, withArg } = WRAPPERS[w];
+      let m = k + 1;
+      for (;;) {
+        const x = at(m);
+        if (!word(x)) break;
+        const o = x.word, eq = o.indexOf('=');
+        if (o === '--') { m++; break; }
+        if (!o.startsWith('-') || (o === '-' && w !== 'env')) break;
+        if (w === 'nice' && /^-\d+$/.test(o)) { m++; continue; }
+        if (flags.includes(o)) { m++; continue; }
+        if (withArg.includes(o)) { m += 2; continue; }
+        if (o.startsWith('--') && eq > 0 && withArg.includes(o.slice(0, eq))) { m++; continue; }
+        if (/^-[A-Za-z]./.test(o) && withArg.includes(o.slice(0, 2))) { m++; continue; }   // -n10, -uNAME
+        throw new Unsure();
       }
-      if (w === 'timeout' && k < toks.length && 'word' in toks[k]) k++;   // the duration
+      if (w === 'env') while (word(at(m)) && ASSIGNMENT.test((at(m) as { word: string }).word)) m++;
+      if (w === 'timeout' && word(at(m))) m++;                          // the duration
+      if (!word(at(m))) return w;                                      // the wrapper alone: `env | grep x` runs env
+      k = m;
       continue;
     }
-    return commandLabel(w);
+    if (w === 'function' || (op(peek(k + 1), '(') && op(peek(k + 2), ')'))) return WITHHELD;   // a definition, not a program
+    if (w === '[' || w === '[[') return w;
+    const last = w.slice(w.lastIndexOf('/') + 1);
+    return /[$`\\]/.test(last) ? WITHHELD : label(last.replace(/["']/g, ''), WITHHELD);
   }
-  if (sub !== undefined && depth < 3) return bashVerb(sub, depth + 1);
+  if (sub !== undefined) return depth < 3 ? readVerb(sub, depth + 1) : WITHHELD;
   return '(empty)';
 }
 
+const FILE_TOOLS = ['Read', 'Edit', 'Write', 'NotebookEdit'];
+
 /** A short label for what a call did, read from its input; the input itself is never printed.
- *  Bash: see bashVerb. Read, Edit, Write, NotebookEdit: the file's extension, or its name when it
- *  has none (a path is cut at / and at \). Agent, Task: the subagent type. Skill: the skill. Else
- *  the tool's name. Every label passes LABEL or prints as (withheld). */
-function verbOf(tool: string, input?: Record<string, any> | null): string {
-  const inp = input ?? {};
-  if (tool === 'Bash') return bashVerb(String(inp.command || ''));
-  if (['Read', 'Edit', 'Write', 'NotebookEdit'].includes(tool)) {
-    const name = String(inp.file_path || inp.notebook_path || '').split(/[\\/]/).pop() || '';
-    return label(extname(name) || name, '(none)');
+ *  Bash: see bashVerb. Read, Edit, Write, NotebookEdit: the file's extension, or its name when it has none (a path
+ *  is cut at / and at \). Agent, Task: the subagent type. Skill: the skill. Else the tool's name. A value that is
+ *  not a string, or not label-shaped, prints as (withheld). */
+function verbOf(tool: string, input?: unknown): string {
+  const inp = isRecord(input) ? input : {};
+  if (tool === 'Bash') {
+    const c = inp.command;
+    return typeof c === 'string' ? bashVerb(c) : c === undefined || c === null ? '(empty)' : WITHHELD;
+  }
+  if (FILE_TOOLS.includes(tool)) {
+    const p = inp.file_path ?? inp.notebook_path;
+    if (p === undefined || p === null || p === '') return '(none)';
+    if (typeof p !== 'string') return WITHHELD;
+    const name = p.split(/[\\/]/).pop() || '';
+    return label(extname(name) || name, '(none)', FILE_LABEL);
   }
   if (tool === 'Agent' || tool === 'Task') return label(inp.subagent_type, 'agent');
   if (tool === 'Skill') return label(inp.skill, 'skill');
   return label(tool, WITHHELD);
 }
 
-/** A failed call's error CLASS, by fixed rules over the result text: a label, never the text.
- *  A hook block carries the hook script's name (without its extension): a label, not payload. */
+/** A failed call's error CLASS, by fixed rules over the result's first line: a label, never the text. A hook
+ *  block is recognised only in the harness's own format (PreToolUse:<tool> hook error: [<command>]: ...), and the
+ *  hook script's name, read inside those brackets, passes the label rule or the class is plain hook-block. An exit
+ *  code is read only from the harness's leading "Exit code N". */
 function errorClass(text: string): string {
-  const first = text.split('\n').find((l) => l.trim()) || '';
-  if (/^PreToolUse:|hook error|blocked by .*hook/i.test(first)) {
-    const h = /\[(?:bash |node |python3 )?[^\]]*?([\w.-]+)\.(?:sh|mjs|js|py)\b/.exec(first);
-    return h ? `hook-block:${h[1]}` : 'hook-block';
+  const first = (text.split('\n').find((l) => l.trim()) || '').slice(0, 400);
+  const hook = /^PreToolUse:[\w.:-]* hook error: \[([^\]]{0,300})\]/.exec(first);
+  if (hook) {
+    const m = /([\w.-]+)\.(?:sh|bash|mjs|cjs|js|ts|py|rb|pl)$/.exec(hook[1].trim().split(/\s+/).pop() ?? '');
+    return m && FILE_LABEL.test(m[1]) && m[1].length <= 48 ? `hook-block:${m[1]}` : 'hook-block';
   }
   if (/String to replace not found/.test(text)) return 'no-anchor';
   if (/has not been read yet|must (?:first )?read/i.test(text)) return 'not-read';
-  const ex = /Exit code (\d+)/.exec(text);
+  const ex = /^\s*Exit code (\d{1,3})\b/.exec(first);
   if (ex) return `exit-${ex[1]}`;
   if (/InputValidationError|invalid input/i.test(first)) return 'bad-input';
   if (/denied|not permitted|permission/i.test(first)) return 'denied';
   return 'other';
 }
 
-/** Content as one string: a string as it is; an array of blocks as their texts joined by newlines. */
-const flat = (c: unknown): string => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x: any) => (typeof x === 'string' ? x : x?.text ?? '')).join('\n') : '');
+/** Content as one string: a string as it is; an array as its text blocks (and bare strings) joined by newlines. */
+const flat = (c: unknown): string => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x: any) => (typeof x === 'string' ? x : typeof x?.text === 'string' ? x.text : '')).join('\n') : '');
+/** What a result's hash covers: its text, or, when it holds anything else (an image), the whole content as JSON. */
+const hashed = (c: unknown): string => (Array.isArray(c) && c.some((x) => isRecord(x) && x.type !== 'text') ? JSON.stringify(c) : flat(c));
 const promptLen = (rec: any): number => flat(rec?.message?.content).length;
 
 /** The address prefix: the file name's first 8 characters. A subagent's transcript is named
@@ -321,7 +424,7 @@ function skeletonOf(file: string, t: Transcript): SkeletonLine[] {
       const answered = c.resultBlock !== undefined, rt = flat(c.resultBlock?.content);
       lines.push({ k: 'call', a: at(c.callNode), ta, tool: label(c.name, WITHHELD), verb: verbOf(c.name, c.input),
         in: h12(JSON.stringify(c.input ?? {})), ok: answered ? !c.isError : null, ek: answered && c.isError ? errorClass(rt) : undefined,
-        r: c.resultNode ? at(c.resultNode) : null, out: answered ? h12(rt) : null, n: answered ? rt.length : null });
+        r: c.resultNode ? at(c.resultNode) : null, out: answered ? h12(hashed(c.resultBlock?.content)) : null, n: answered ? rt.length : null });
     }
   }
   return lines;
@@ -350,7 +453,7 @@ function statsOf(file: string, lines: SkeletonLine[]): StatsLine {
 /** Records reachable from no root and no orphan: they sit on a parentUuid cycle, or below one. */
 function cycleRecords(t: Transcript): number {
   const seen = new Set<TreeNode>(), stack = [...t.roots, ...t.orphans];
-  while (stack.length) { const n = stack.pop()!; if (seen.has(n)) continue; seen.add(n); stack.push(...n.children); }
+  while (stack.length) { const n = stack.pop()!; if (seen.has(n)) continue; seen.add(n); for (const c of n.children) stack.push(c); }
   return t.nodes.size - seen.size;
 }
 
@@ -363,7 +466,7 @@ function warningsFor(cmd: string, file: string, t: Transcript, lineCount: number
   if (t.fileKind === 'empty') warnings.push(`memobrain ${cmd}: warning: '${file}' holds no records, so ${consequence}.`);
   else if (t.fileKind === 'journal') warnings.push(`memobrain ${cmd}: warning: '${file}' is a workflow journal (launched, started and result records only), not a conversation, so ${consequence}.`);
   else if (t.fileKind === 'unknown') {
-    const types = [...new Set(t.records.map((r) => (typeof r.type === 'string' ? r.type : '(none)')))].sort();
+    const types = [...new Set(t.records.map((r) => (r.type === undefined || r.type === null ? '(none)' : label(r.type, '(none)'))))].sort();
     const shown = types.slice(0, 6).join(', ') + (types.length > 6 ? `, and ${types.length - 6} more` : '');
     warnings.push(`memobrain ${cmd}: warning: '${file}' has no conversation records (no record carries both uuid and parentUuid; record types found: ${shown}), so ${consequence}. Conversation transcripts are the <session>.jsonl files in ~/.claude/projects/<project>/ and the agent-<id>.jsonl files under <session>/subagents/.`);
   }
@@ -436,6 +539,7 @@ function main(argv: string[]): number {
 // A reader that stops early (e.g. `| head`) closes the pipe: stop quietly, it is not an error here.
 process.stdout.on('error', (e: NodeJS.ErrnoException) => {
   if (e.code === 'EPIPE') process.exit(process.exitCode ?? 0);
-  throw e;
+  process.stderr.write(`memobrain: cannot write the output (${e.code ?? e.message}); what was written so far is incomplete.\n`);
+  process.exit(1);
 });
 process.exitCode = main(process.argv.slice(2));

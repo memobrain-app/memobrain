@@ -35,6 +35,8 @@ const LABELS = fixture('labels.jsonl');
 const UNANSWERED = fixture('unanswered.jsonl');
 const CYCLE = fixture('cycle.jsonl');
 const RARE = fixture('rare-shapes.jsonl');
+const pad2 = (i) => String(i).padStart(2, '0');
+const json = (name) => JSON.parse(readFileSync(fixture(name), 'utf8'));
 
 // a timeout, so that a run that never ends (a parentUuid cycle once did that) fails instead of hanging
 function run(...args) {
@@ -54,7 +56,9 @@ const recordsOf = (file) => readFileSync(file, 'utf8').split('\n')
   .flatMap((l, i) => { const rec = l.trim() ? tryParse(l) : undefined; return rec ? [{ line: i + 1, rec }] : []; });
 const h12 = (s) => createHash('sha256').update(s).digest('hex').slice(0, 12);
 const textOf = (c) => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => (typeof x === 'string' ? x : x?.text ?? '')).join('\n') : '');
-const blocksIn = (rec) => (Array.isArray(rec.message?.content) ? rec.message.content : []);
+const blocksIn = (rec) => (Array.isArray(rec.message?.content) ? rec.message.content.filter((b) => b && typeof b === 'object') : []);
+// what a result's hash covers: its text, or the whole content as JSON when it holds anything else (an image)
+const hashedOf = (c) => (Array.isArray(c) && c.some((x) => x && typeof x === 'object' && !Array.isArray(x) && x.type !== 'text') ? JSON.stringify(c) : textOf(c));
 function find(records, kind, id) {
   for (const { line, rec } of records) {
     for (const b of blocksIn(rec)) {
@@ -194,6 +198,31 @@ const CASES = [
   { file: CYCLE, sid: 'cycle.js', expected: CYCLE_EXPECTED, minPayload: 8,
     stderr: /^memobrain skeleton: warning: '[^']*cycle\.jsonl': 5 records sit on a parentUuid cycle or below one \(following the parent links never reaches the start of the session\), so the live path through them may be incomplete\.\n$/ },
   { file: RARE, sid: 'rare-sha', expected: RARE_EXPECTED, minPayload: 14 },
+  // the second set: what the pre-publish review found (test/make-fixtures.mjs writes these files)
+  { file: fixture('lexer.jsonl'), sid: 'lexer.js', minPayload: 30, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    ...json('lexer.expected.json').map((verb, i) => ({ k: 'call', id: `toolu_lexer_${pad2(i + 1)}`, tool: 'Bash', verb }))] },
+  { file: fixture('labels2.jsonl'), sid: 'labels2.', minPayload: 10, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    ...json('labels2.expected.json').map(([tool, verb], i) => ({ k: 'call', id: `toolu_labels2_${pad2(i + 1)}`, tool, verb }))] },
+  { file: fixture('errors.jsonl'), sid: 'errors.j', minPayload: 10, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    ...[['WebFetch', 'WebFetch', 'other'], ['Read', '.txt', 'other'], ['Bash', 'make', 'hook-block'], ['Bash', 'make', 'exit-1'],
+      ['Bash', 'make', 'other'], ['Bash', 'make', 'hook-block:demo-guard']].map(([tool, verb, ek], i) => ({ k: 'call', id: `toolu_errors_${pad2(i + 1)}`, tool, verb, ek }))] },
+  { file: fixture('parallel.jsonl'), sid: 'parallel', minPayload: 5, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    { k: 'call', id: 'toolu_parallel_01', tool: 'Read', verb: '.txt' }, { k: 'call', id: 'toolu_parallel_02', tool: 'Read', verb: '.txt' }] },
+  ...[['compacted.jsonl', 'compacte', 'cp'], ['compacted-nopointer.jsonl', 'compacte', 'cn']].map(([name, sid, x]) => ({ file: fixture(name), sid, minPayload: 10, expected: [
+    { k: 'turn', line: 1, ch: 'typed' }, ...[1, 2, 3].map((i) => ({ k: 'call', id: `toolu_${x}_0${i}`, tool: 'Bash', verb: 'make' })),
+    { k: 'turn', line: 11, ch: 'typed' }, { k: 'call', id: `toolu_${x}_04`, tool: 'Bash', verb: 'make' }] })),
+  { file: fixture('stale-head.jsonl'), sid: 'stale-he', minPayload: 5, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    { k: 'call', id: 'toolu_stale_01', tool: 'Bash', verb: 'make' }, { k: 'call', id: 'toolu_stale_02', tool: 'Bash', verb: 'make' }] },
+  { file: fixture('retried3.jsonl'), sid: 'retried3', minPayload: 8, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    ...[1, 2, 3, 4].map((i) => ({ k: 'call', id: `toolu_retry3_0${i}`, tool: 'Bash', verb: 'make' }))] },
+  { file: fixture('orphan-first.jsonl'), sid: 'orphan-f', minPayload: 3, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    { k: 'call', id: 'toolu_orphan_01', tool: 'Bash', verb: 'make' }] },
+  ...[['cycle-stale.jsonl', 'cycle-st', [3]], ['cycle-logical.jsonl', 'cycle-lo', [1, 5]], ['cycle-head.jsonl', 'cycle-he', [1, 5]]].map(([name, sid, lines]) => ({
+    file: fixture(name), sid, minPayload: 3, expected: lines.map((line) => ({ k: 'turn', line, ch: 'typed' })),
+    stderr: new RegExp(`^memobrain skeleton: warning: '[^']*${name.replace('.', '\\.')}': 2 records sit on a parentUuid cycle or below one`) })),
+  { file: fixture('content.jsonl'), sid: 'content.', minPayload: 5, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    { k: 'call', id: 'toolu_content_01', tool: 'Read', verb: '.png' }, { k: 'call', id: 'toolu_content_02', tool: 'Read', verb: '.png' },
+    { k: 'call', id: 'toolu_content_03', tool: 'Bash', verb: 'make' }, { k: 'call', id: 'toolu_content_04', tool: 'Bash', verb: 'make' }] },
 ];
 
 /** Every field of every expected line, computed from the raw records. */
@@ -212,7 +241,7 @@ function expectedSkeleton({ file, sid, expected }) {
     if (e.unanswered) return { ...head, ok: null, r: null, out: null, n: null };
     const res = find(records, 'tool_result', e.id);
     const text = textOf(res.block.content);
-    return { ...head, ok: !e.ek, ...(e.ek ? { ek: e.ek } : {}), r: `${sid}:L${res.line}`, out: h12(text), n: text.length };
+    return { ...head, ok: !e.ek, ...(e.ek ? { ek: e.ek } : {}), r: `${sid}:L${res.line}`, out: h12(hashedOf(res.block.content)), n: text.length };
   });
 }
 
@@ -345,6 +374,48 @@ test('no payload text from the fixtures appears in the output', () => {
   for (const s of ['limerick', 'poem', 'npm test', 'rm -rf', 'recieve', '/work/', 'demo-gate.sh', 'PreToolUse', 'String to replace', 'FOO=1', 'two words', 'sudo make']) {
     assert.ok(!output.includes(s), `the output contains '${s}'`);
   }
+});
+
+test('no planted marker reaches any output: ZQX appears in no line of stdout or stderr, for any fixture', () => {
+  for (const c of CASES) for (const cmd of ['skeleton', 'stats']) {
+    const r = run(cmd, c.file);
+    assert.ok(!(r.out + r.err).includes('ZQX'), `${c.sid} ${cmd} prints a planted marker`);
+  }
+});
+
+test('two images hash apart; a result with no text has n 0', () => {
+  const calls = parsed(run('skeleton', fixture('content.jsonl')).out).filter((o) => o.k === 'call');
+  assert.notEqual(calls[0].out, calls[1].out);
+  assert.deepEqual([calls[0].n, calls[1].n], [0, 0]);
+});
+
+test('large and deep inputs end in time: 30,000 turns, a megabyte first line, 10,000-deep nesting, 130,000 children', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  const env = { isSidechain: false, userType: 'external', cwd: '/w', version: '2.0.0', gitBranch: 'main', entrypoint: 'cli', sessionId: 's' };
+  const u = (i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`;
+  const timed = (args, ms) => { const t0 = Date.now(); const r = run(...args); assert.equal(r.code, 0, r.err); assert.ok(Date.now() - t0 < ms, `${args[1]} took ${Date.now() - t0} ms`); return r; };
+  try {
+    const turns = [];
+    for (let i = 0, n = 0, parent = null; i < 30000; i++) {
+      const p = u(++n), a = u(++n), r = u(++n);
+      turns.push(JSON.stringify({ parentUuid: parent, ...env, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go on' }, uuid: p }));
+      turns.push(JSON.stringify({ parentUuid: p, ...env, type: 'assistant', requestId: `q${i}`, message: { content: [{ type: 'tool_use', id: `t${i}`, name: 'Bash', input: { command: 'make' } }] }, uuid: a }));
+      turns.push(JSON.stringify({ parentUuid: a, ...env, type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: `t${i}`, content: 'ok' }] }, toolUseResult: {}, uuid: r }));
+      parent = r;
+    }
+    writeFileSync(join(dir, 'turns.jsonl'), turns.join('\n') + '\n');
+    assert.equal(JSON.parse(timed(['stats', join(dir, 'turns.jsonl')], 15000).out).turns, 30000);
+    const big = [JSON.stringify({ parentUuid: null, ...env, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' }, uuid: u(1) }),
+      JSON.stringify({ parentUuid: u(1), ...env, type: 'assistant', requestId: 'q', message: { content: [{ type: 'tool_use', id: 't', name: 'Bash', input: { command: '"$('.repeat(10000) + 'make' } }] }, uuid: u(2) }),
+      JSON.stringify({ parentUuid: u(2), ...env, type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't', is_error: true, content: 'PreToolUse:' + 'hook error ['.repeat(90000) }] }, toolUseResult: 'x', uuid: u(3) })];
+    writeFileSync(join(dir, 'big.jsonl'), big.join('\n') + '\n');
+    const line = parsed(timed(['skeleton', join(dir, 'big.jsonl')], 10000).out).find((o) => o.k === 'call');
+    assert.deepEqual([line.verb, line.ek], ['(withheld)', 'other']);
+    const wide = [JSON.stringify({ parentUuid: null, ...env, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' }, uuid: u(1) })];
+    for (let i = 2; i < 130002; i++) wide.push(JSON.stringify({ parentUuid: u(1), ...env, type: 'attachment', attachment: { type: 'x' }, uuid: u(i) }));
+    writeFileSync(join(dir, 'wide.jsonl'), wide.join('\n') + '\n');
+    timed(['stats', join(dir, 'wide.jsonl')], 15000);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 // ---- stats ----------------------------------------------------------------------------------

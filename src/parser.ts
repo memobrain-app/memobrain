@@ -358,7 +358,7 @@ export function blocksOf(m: Message | undefined | null): ContentBlock[] {
   if (!m) return [];
   const c = m.content;
   if (typeof c === 'string') return [{ type: 'text', text: c }];
-  return Array.isArray(c) ? c : [];
+  return Array.isArray(c) ? (c.filter(isObj) as ContentBlock[]) : [];
 }
 
 /** Trap 2. A tool result is `type:"user"`. Only the content shape separates it
@@ -728,14 +728,14 @@ export function pathTo(t: Transcript, uuid: Uuid): TreeNode[] {
 /** The conversation as it actually stood at the end.
  *  Primary: the `last-prompt.leafUuid` pointer. Fallback: the deepest leaf,
  *  stated as a fallback because it is a GUESS and the pointer is a FACT. */
-export function livePath(t: Transcript): { path: TreeNode[]; from: 'leafUuid' | 'deepest-leaf' | 'none' } {
+export function livePath(t: Transcript): { path: TreeNode[]; from: 'leafUuid' | 'last-leaf' | 'none' } {
   if (t.liveLeafUuid && t.nodes.has(t.liveLeafUuid)) return { path: pathTo(t, t.liveLeafUuid), from: 'leafUuid' };
   let best: TreeNode | null = null;
   for (const n of t.nodes.values()) {
     if (n.children.length) continue;
-    if (!best || n.depth > best.depth || (n.depth === best.depth && n.index > best.index)) best = n;
+    if (!best || n.index > best.index) best = n;       // the last-written leaf, not the deepest (depth is per compaction segment)
   }
-  return best ? { path: pathTo(t, best.uuid), from: 'deepest-leaf' } : { path: [], from: 'none' };
+  return best ? { path: pathTo(t, best.uuid), from: 'last-leaf' } : { path: [], from: 'none' };
 }
 
 /** THE LIVE PATH, REPAIRED. livePath() walks parentUuid up from the head pointer and labels the
@@ -790,7 +790,7 @@ export interface CompactionJoin {
   via: 'logical-parent' | 'preserved-head'; joinedAt: TreeNode;
   trigger: string | null; preTokens: number | null; postTokens: number | null; durationMs: number | null;
 }
-export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leafUuid' | 'deepest-leaf' | 'none'; bridges: Bridge[]; splices: Splice[]; extension: Extension | null; compactions: CompactionJoin[] } {
+export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leafUuid' | 'last-leaf' | 'none'; bridges: Bridge[]; splices: Splice[]; extension: Extension | null; compactions: CompactionJoin[] } {
   const base = livePath(t);
   const bridges: Bridge[] = [];
   const splices: Splice[] = [];
@@ -808,7 +808,7 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
   if (tip && tip.children.length) {
     let last: TreeNode = tip, n = 0;
     const st = [...tip.children], seen = new Set<TreeNode>([tip]);
-    while (st.length) { const x = st.pop()!; if (seen.has(x)) continue; seen.add(x); n++; if (x.index > last.index) last = x; st.push(...x.children); }
+    while (st.length) { const x = st.pop()!; if (seen.has(x)) continue; seen.add(x); n++; if (x.index > last.index) last = x; for (const y of x.children) st.push(y); }
     extension = { leaf: tip, to: last, records: n, kind: 'stale-head' };
     path = pathTo(t, last.uuid);
   }
@@ -847,7 +847,7 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
       //   compaction has none, so there the tip is the logical parent and nothing changes.
       if (!inPath.has(logical.uuid) && logical.index < head.index) {
         let tip = logical; const st = [...logical.children], seen = new Set<TreeNode>([logical]);
-        while (st.length) { const x = st.pop()!; if (seen.has(x)) continue; seen.add(x); if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid)) tip = x; st.push(...x.children); }
+        while (st.length) { const x = st.pop()!; if (seen.has(x)) continue; seen.add(x); if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid)) tip = x; for (const y of x.children) st.push(y); }
         join(tip, 'logical-parent');
         continue;
       }
@@ -859,7 +859,7 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
       const hd = typeof m.preservedSegment?.headUuid === 'string' ? t.nodes.get(m.preservedSegment.headUuid) : undefined;
       if (hd && !inPath.has(hd.uuid) && hd.index < head.index) {
         let tip = hd; const st = [...hd.children], seen = new Set<TreeNode>([hd]);
-        while (st.length) { const x = st.pop()!; if (seen.has(x)) continue; seen.add(x); if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid)) tip = x; st.push(...x.children); }
+        while (st.length) { const x = st.pop()!; if (seen.has(x)) continue; seen.add(x); if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid)) tip = x; for (const y of x.children) st.push(y); }
         join(tip, 'preserved-head');
         continue;
       }
@@ -893,7 +893,7 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
       if (seen.has(x)) continue;
       seen.add(x);
       if (x.index < E.index && (!last || x.index > last.index)) last = x;
-      stack.push(...x.children);
+      for (const y of x.children) stack.push(y);
     }
     if (!last) continue;
     const upToP = pathTo(t, P.uuid).length;
@@ -921,11 +921,22 @@ export function turnsOf(t: Transcript, path?: TreeNode[]): Turn[] {
   }
   const reqByUuid = new Map<Uuid, ApiRequest>();
   for (const g of t.requests) for (const r of g.records) reqByUuid.set(r.uuid, g);
+  // A call belongs to the turn whose path holds ANY record of its API request. Calls run in parallel are
+  //   separate records of one request; when their results come back out of order the path runs through only some
+  //   of them, and the others were dropped from the turn (trap 1 again: the request, not the record, is the unit).
+  const byReq = new Map<ApiRequest, ToolCall[]>(), byNode = new Map<number, ToolCall[]>();
+  for (const c of t.toolCalls) {
+    const g = reqByUuid.get(c.callNode.uuid);
+    if (g) { const l = byReq.get(g); if (l) l.push(c); else byReq.set(g, [c]); }
+    const l = byNode.get(c.callNode.index); if (l) l.push(c); else byNode.set(c.callNode.index, [c]);
+  }
   for (const turn of out) {
     const seen = new Set<ApiRequest>();
     for (const n of turn.records) { const g = reqByUuid.get(n.uuid); if (g && !seen.has(g)) { seen.add(g); turn.requests.push(g); } }
-    const idx = new Set(turn.records.map((n) => n.index));
-    turn.toolCalls = t.toolCalls.filter((c) => idx.has(c.callNode.index));
+    const calls = new Set<ToolCall>();
+    for (const g of turn.requests) for (const c of byReq.get(g) ?? []) calls.add(c);
+    for (const n of turn.records) for (const c of byNode.get(n.index) ?? []) calls.add(c);
+    turn.toolCalls = [...calls].sort((a, b) => a.callNode.index - b.callNode.index);
   }
   return out;
 }

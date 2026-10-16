@@ -70,7 +70,7 @@ export function blocksOf(m) {
     const c = m.content;
     if (typeof c === 'string')
         return [{ type: 'text', text: c }];
-    return Array.isArray(c) ? c : [];
+    return Array.isArray(c) ? c.filter(isObj) : [];
 }
 /** Trap 2. A tool result is `type:"user"`. Only the content shape separates it
  *  from a prompt. Getting this wrong makes every "turn" a tool result. */
@@ -479,10 +479,10 @@ export function livePath(t) {
     for (const n of t.nodes.values()) {
         if (n.children.length)
             continue;
-        if (!best || n.depth > best.depth || (n.depth === best.depth && n.index > best.index))
-            best = n;
+        if (!best || n.index > best.index)
+            best = n; // the last-written leaf, not the deepest (depth is per compaction segment)
     }
-    return best ? { path: pathTo(t, best.uuid), from: 'deepest-leaf' } : { path: [], from: 'none' };
+    return best ? { path: pathTo(t, best.uuid), from: 'last-leaf' } : { path: [], from: 'none' };
 }
 export function repairedLivePath(t) {
     const base = livePath(t);
@@ -509,7 +509,8 @@ export function repairedLivePath(t) {
             n++;
             if (x.index > last.index)
                 last = x;
-            st.push(...x.children);
+            for (const y of x.children)
+                st.push(y);
         }
         extension = { leaf: tip, to: last, records: n, kind: 'stale-head' };
         path = pathTo(t, last.uuid);
@@ -557,7 +558,8 @@ export function repairedLivePath(t) {
                     seen.add(x);
                     if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid))
                         tip = x;
-                    st.push(...x.children);
+                    for (const y of x.children)
+                        st.push(y);
                 }
                 join(tip, 'logical-parent');
                 continue;
@@ -578,7 +580,8 @@ export function repairedLivePath(t) {
                     seen.add(x);
                     if (x.index < head.index && x.index > tip.index && !inPath.has(x.uuid))
                         tip = x;
-                    st.push(...x.children);
+                    for (const y of x.children)
+                        st.push(y);
                 }
                 join(tip, 'preserved-head');
                 continue;
@@ -620,7 +623,8 @@ export function repairedLivePath(t) {
             seen.add(x);
             if (x.index < E.index && (!last || x.index > last.index))
                 last = x;
-            stack.push(...x.children);
+            for (const y of x.children)
+                stack.push(y);
         }
         if (!last)
             continue;
@@ -653,6 +657,25 @@ export function turnsOf(t, path) {
     for (const g of t.requests)
         for (const r of g.records)
             reqByUuid.set(r.uuid, g);
+    // A call belongs to the turn whose path holds ANY record of its API request. Calls run in parallel are
+    //   separate records of one request; when their results come back out of order the path runs through only some
+    //   of them, and the others were dropped from the turn (trap 1 again: the request, not the record, is the unit).
+    const byReq = new Map(), byNode = new Map();
+    for (const c of t.toolCalls) {
+        const g = reqByUuid.get(c.callNode.uuid);
+        if (g) {
+            const l = byReq.get(g);
+            if (l)
+                l.push(c);
+            else
+                byReq.set(g, [c]);
+        }
+        const l = byNode.get(c.callNode.index);
+        if (l)
+            l.push(c);
+        else
+            byNode.set(c.callNode.index, [c]);
+    }
     for (const turn of out) {
         const seen = new Set();
         for (const n of turn.records) {
@@ -662,8 +685,14 @@ export function turnsOf(t, path) {
                 turn.requests.push(g);
             }
         }
-        const idx = new Set(turn.records.map((n) => n.index));
-        turn.toolCalls = t.toolCalls.filter((c) => idx.has(c.callNode.index));
+        const calls = new Set();
+        for (const g of turn.requests)
+            for (const c of byReq.get(g) ?? [])
+                calls.add(c);
+        for (const n of turn.records)
+            for (const c of byNode.get(n.index) ?? [])
+                calls.add(c);
+        turn.toolCalls = [...calls].sort((a, b) => a.callNode.index - b.callNode.index);
     }
     return out;
 }
