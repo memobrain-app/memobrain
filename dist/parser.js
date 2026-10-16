@@ -165,8 +165,18 @@ export function parseLines(text, opts = {}) {
             continue;
         n++;
         const hasNul = raw.indexOf('\u0000') !== -1;
+        // A crafted line can stop the whole file in code far from here: an object whose toString is not a function makes
+        // every String() of it throw, and an array nested thousands deep makes join and stringify overflow the stack. So
+        // an object holding a "toString" or "valueOf" key gets a hidden string conversion (a symbol, which JSON.stringify
+        // ignores: its hash is unchanged), and a line nested deeper than MAX_DEPTH is skipped as a problem, like a line
+        // that is not JSON.
+        if (raw.length > 2 * MAX_DEPTH && depthOf(raw) > MAX_DEPTH) {
+            problems.push({ line: i + 1, offset: lineStart, bytes: len, reason: 'too-deep', message: `nested deeper than ${MAX_DEPTH} levels`, hasNul, sample: JSON.stringify(raw.slice(0, 120)) });
+            continue;
+        }
+        const reviver = raw.includes('"toString"') || raw.includes('"valueOf"') ? convertible : undefined;
         const attempt = (s) => { try {
-            return { ok: true, v: JSON.parse(s) };
+            return { ok: true, v: JSON.parse(s, reviver) };
         }
         catch (e) {
             return { ok: false, e };
@@ -204,6 +214,35 @@ export function parseLines(text, opts = {}) {
         positions.push({ line: i + 1, offset: lineStart, bytes: len });
     }
     return { records, positions, problems, lines: n };
+}
+const MAX_DEPTH = 1000;
+const convertible = (_k, v) => {
+    if (v && typeof v === 'object' && (Object.hasOwn(v, 'toString') || Object.hasOwn(v, 'valueOf')))
+        Object.defineProperty(v, Symbol.toPrimitive, { value: () => '[object Object]' });
+    return v;
+};
+/** The deepest nesting of [ and { in a JSON text, outside strings. */
+function depthOf(s) {
+    let d = 0, max = 0, inStr = false;
+    for (let i = 0; i < s.length; i++) {
+        const c = s.charCodeAt(i);
+        if (inStr) {
+            if (c === 92)
+                i++;
+            else if (c === 34)
+                inStr = false;
+            continue;
+        } // \ escapes, " closes
+        if (c === 34)
+            inStr = true;
+        else if (c === 91 || c === 123) {
+            if (++d > max)
+                max = d;
+        }
+        else if (c === 93 || c === 125)
+            d--;
+    }
+    return max;
 }
 // ---- 7. The forest ---------------------------------------------------------
 function buildForest(records) {
@@ -289,7 +328,7 @@ function buildRequests(records, replay) {
         const a = r;
         // Without requestId (older versions) the records of one response share message.id; with neither, a record is
         // a group of its own rather than being merged into one bucket keyed on undefined.
-        const key = a.requestId ?? (a.message?.id ? `msg:${a.message.id}` : `uuid:${a.uuid}`);
+        const key = a.requestId ?? (typeof a.message?.id === 'string' && a.message.id ? `msg:${a.message.id}` : `uuid:${a.uuid}`);
         let g = byId.get(key);
         if (!g) {
             g = {

@@ -195,12 +195,12 @@
   "skeleton": {
    "code": 0,
    "out": "{\"k\":\"turn\",\"a\":\"pb-probl:L1\",\"ta\":\"pb-probl:T001\",\"ch\":\"typed\",\"n\":20}\n{\"k\":\"call\",\"a\":\"pb-probl:L3\",\"ta\":\"pb-probl:T001\",\"tool\":\"Bash\",\"verb\":\"make\",\"in\":\"bfc11414d9cb\",\"ok\":true,\"r\":\"pb-probl:L5\",\"out\":\"2689367b205c\",\"n\":2}\n",
-   "err": "memobrain skeleton: warning: '<dir>/pb-problems2.jsonl': 2 lines could not be read as a JSON object (first: line 2) and were skipped.\n"
+   "err": "memobrain skeleton: warning: '<dir>/pb-problems2.jsonl': 2 lines could not be read as a JSON object of at most 1,000 levels (first: line 2) and were skipped.\n"
   },
   "stats": {
    "code": 0,
    "out": "{\"session\":\"pb-probl\",\"turns\":1,\"prompts\":1,\"calls\":1,\"failures\":0,\"unanswered\":0,\"errorClasses\":{},\"retries\":0,\"detours\":0,\"maxHops\":0,\"hopsOver2\":0}\n",
-   "err": "memobrain stats: warning: '<dir>/pb-problems2.jsonl': 2 lines could not be read as a JSON object (first: line 2) and were skipped.\n"
+   "err": "memobrain stats: warning: '<dir>/pb-problems2.jsonl': 2 lines could not be read as a JSON object of at most 1,000 levels (first: line 2) and were skipped.\n"
   }
  },
  "pb-req-reuse.jsonl": {

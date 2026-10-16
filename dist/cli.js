@@ -66,8 +66,7 @@ skeleton, one line per tool call, after the turn it belongs to:
                 extension (its name when it has none). Agent, Task: the
                 subagent type. Skill: the skill name. Other tools: the name
   in            sha256 of the input as JSON.stringify writes it (a missing
-                input counts as {}), first 12 hex characters; (too deep) when
-                it is nested too deeply to serialize
+                input counts as {}), first 12 hex characters
   ok            true when the call succeeded, false when it failed, null when
                 no result was recorded (the session ended, or the file was
                 cut, before the call returned)
@@ -81,8 +80,7 @@ skeleton, one line per tool call, after the turn it belongs to:
   r             address of the result, or null when none was recorded
   out           sha256 of the result text (UTF-8), first 12 hex characters;
                 of the whole result as JSON when it holds anything but text;
-                (too deep) when that is nested too deeply to serialize; null
-                when no result was recorded
+                null when no result was recorded
   n             length of the result text, JavaScript string length (null
                 when no result was recorded)
 
@@ -100,7 +98,7 @@ stats, one line per file:
   unanswered    tool calls with no recorded result
   errorClasses  failures by error class
   retries       calls right after a failed call in the same turn, with the
-                same tool
+                same tool, issued after its result
   detours       calls right after a failed call in the same turn, with a
                 different tool
   maxHops       the longest chain of failures with one verb that a later
@@ -108,10 +106,10 @@ stats, one line per file:
                 the success
   hopsOver2     chains of more than 2 hops
 
-Warnings go to stderr: lines that are not JSON objects, files with nothing to
-show (empty, a workflow journal, no conversation records, no turns), records
-whose parent links loop, and values nested too deeply to hash, so a zero never
-reads as a clean result.
+Warnings go to stderr: lines that are not JSON objects (or are nested more
+than 1,000 levels deep), files with nothing to show (empty, a workflow journal,
+no conversation records, no turns), and records whose parent links loop, so a
+zero never reads as a clean result.
 
 Exit status: 0 when every file was processed, 1 when a file could not be read
 or processed, 2 on a usage error.
@@ -163,11 +161,15 @@ function bashVerb(s, depth = 0) {
         i++; };
     const ends = (j) => j >= s.length || ' \t\n;&|<>)'.includes(s[j]);
     const at = (re, k) => { re.lastIndex = k; const m = re.exec(s); return m ? m[0] : null; };
-    /** The end of a passable word starting at k (possibly empty), or -1. */
-    const passable = (k) => {
+    /** The end of a passable word starting at k (possibly empty), or -1. bare = false refuses an unquoted $NAME: in
+     *  an ARGUMENT (env's NAME=value) bash word-splits it, and its second word could become the program. */
+    const passable = (k, bare = true) => {
         let j = k;
-        for (let p = at(PART, j); p !== null && p.length; p = at(PART, j))
+        for (let p = at(PART, j); p !== null && p.length; p = at(PART, j)) {
+            if (!bare && p[0] === '$')
+                return -1;
             j += p.length;
+        }
         return ends(j) ? j : -1;
     };
     const separator = () => (s.startsWith('&&', i) ? 2 : s[i] === ';' || s[i] === '\n' ? 1 : 0);
@@ -264,7 +266,8 @@ function bashVerb(s, depth = 0) {
                 next = true;
                 continue;
             }
-            if (WRAPPERS.has(x) && (x !== 'time' || first)) { // time is the keyword only where a command starts
+            // time is the keyword only where a command starts; after a wrapper, command and exec are files on PATH
+            if (WRAPPERS.has(x) && (x !== 'time' || first) && !(wrapped && (x === 'command' || x === 'exec'))) {
                 first = false;
                 wrapped = true;
                 if (x === 'time' && s.startsWith('-p', i) && ends(i + 2)) {
@@ -291,7 +294,7 @@ function bashVerb(s, depth = 0) {
                         blank();
                     }
                     for (let a = at(NAME_EQ, i); a !== null; a = at(NAME_EQ, i)) {
-                        const e = passable(i + a.length);
+                        const e = passable(i + a.length, false);
                         if (e < 0)
                             return WITHHELD;
                         i = e;
@@ -318,11 +321,23 @@ const FILE_TOOLS = ['Read', 'Edit', 'Write', 'NotebookEdit'];
  *  Bash: see bashVerb. Read, Edit, Write, NotebookEdit: the file's extension, or its name when it has none (a path
  *  is cut at / and at \). Agent, Task: the subagent type. Skill: the skill. Else the tool's name. A value that is
  *  not a string, or not label-shaped, prints as (withheld). */
+/** bashVerb, with a stack overflow in a regex on a huge input (millions of characters in one quoted word) read as
+ *  "not understood": the verb is withheld and the rest of the file is still read. */
+function safeBashVerb(command) {
+    try {
+        return bashVerb(command);
+    }
+    catch (e) {
+        if (e instanceof RangeError)
+            return WITHHELD;
+        throw e;
+    }
+}
 function verbOf(tool, input) {
     const inp = isRecord(input) ? input : {};
     if (tool === 'Bash') {
         const c = inp.command;
-        return typeof c === 'string' ? bashVerb(c) : c === undefined || c === null ? '(empty)' : WITHHELD;
+        return typeof c === 'string' ? safeBashVerb(c) : c === undefined || c === null ? '(empty)' : WITHHELD;
     }
     if (FILE_TOOLS.includes(tool)) {
         const p = inp.file_path ?? inp.notebook_path;
@@ -348,7 +363,9 @@ function errorClass(text) {
     const first = (text.split('\n').find((l) => l.trim()) || '').slice(0, 400);
     const hook = /^PreToolUse:[\w.:-]* hook error: \[([^\]]{0,300})\]/.exec(first);
     if (hook) {
-        const script = hook[1].trim().split(/\s+/).map((w) => /(?:^|[\\/])([\w.-]+)\.(?:sh|bash|mjs|cjs|js|ts|py|rb|pl)$/.exec(w)).find(Boolean);
+        const scripts = hook[1].trim().split(/\s+/).map((w) => /(?:^|[\\/])([\w.-]+)\.(?:sh|bash|mjs|cjs|js|ts|py|rb|pl)$/.exec(w)).filter(Boolean);
+        // one script word is the hook's; with two or more, one of them is an argument, and which is not certain
+        const script = scripts.length === 1 ? scripts[0] : null;
         return script && FILE_LABEL.test(script[1]) && script[1].length <= 48 ? `hook-block:${script[1]}` : 'hook-block';
     }
     const ex = /^\s*Exit code (\d{1,3})\b/.exec(first);
@@ -366,19 +383,9 @@ function errorClass(text) {
 }
 /** Content as one string: a string as it is; an array as its text blocks (and bare strings) joined by newlines. */
 const flat = (c) => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => (typeof x === 'string' ? x : typeof x?.text === 'string' ? x.text : '')).join('\n') : '');
-/** A value nested too deeply to serialize (a crafted file; Node 20 overflows its stack near 5,000 levels) gets this
- *  in place of a hash, and a warning; the rest of the file is still read. */
-const TOO_DEEP = '(too deep)';
-const jsonHash = (v) => {
-    try {
-        return h12(JSON.stringify(v) ?? '');
-    }
-    catch (e) {
-        if (e instanceof RangeError)
-            return TOO_DEEP;
-        throw e;
-    }
-};
+/** The parser skips a line nested deeper than 1,000 levels, so what is serialized here stays far from the stack's
+ *  limit. */
+const jsonHash = (v) => h12(JSON.stringify(v) ?? '');
 /** What a result's hash covers: its text, or, when it holds anything else (an image), the whole content as JSON. */
 const outHash = (c) => (Array.isArray(c) && c.some((x) => isRecord(x) && x.type !== 'text') ? jsonHash(c) : h12(flat(c)));
 const promptLen = (rec) => flat(rec?.message?.content).length;
@@ -414,7 +421,10 @@ function skeletonOf(file, t) {
  *  chain as it was. */
 function statsOf(file, lines) {
     const s = { session: prefixOf(file), turns: 0, prompts: 0, calls: 0, failures: 0, unanswered: 0, errorClasses: {}, retries: 0, detours: 0, maxHops: 0, hopsOver2: 0 };
-    let prev = null, run = 0, runVerb = null;
+    // A call issued in the same response as a failed call (its line is above the failure's result) was made before
+    // the failure existed: it is neither a retry nor a detour of it, and it neither extends nor closes its chain.
+    const lineOf = (addr) => (addr ? Number(addr.slice(addr.lastIndexOf(':L') + 2)) : NaN);
+    let prev = null, run = 0, runVerb = null, lastFail = -1;
     for (const r of lines) {
         if (r.k === 'turn') {
             s.turns++;
@@ -423,6 +433,7 @@ function statsOf(file, lines) {
             prev = null;
             run = 0;
             runVerb = null;
+            lastFail = -1;
             continue;
         }
         s.calls++;
@@ -433,17 +444,25 @@ function statsOf(file, lines) {
             s.failures++;
             s.errorClasses[ek] = (s.errorClasses[ek] || 0) + 1;
         }
-        if (prev && prev.ok === false) {
+        const at = lineOf(r.a);
+        if (prev && prev.ok === false && at > lineOf(prev.r)) {
             if (r.tool === prev.tool)
                 s.retries++;
             else
                 s.detours++;
         }
         if (r.ok === false) {
-            run = r.verb === runVerb ? run + 1 : 1;
-            runVerb = r.verb;
+            if (!run || r.verb !== runVerb) {
+                run = 1;
+                runVerb = r.verb;
+                lastFail = lineOf(r.r);
+            }
+            else if (at > lastFail) {
+                run++;
+                lastFail = lineOf(r.r);
+            }
         }
-        else if (r.ok === true && r.verb === runVerb && run) {
+        else if (r.ok === true && run && r.verb === runVerb && at > lastFail) {
             s.maxHops = Math.max(s.maxHops, run + 1);
             if (run + 1 > 2)
                 s.hopsOver2++;
@@ -473,7 +492,7 @@ function warningsFor(cmd, file, t, lines) {
     const consequence = cmd === 'stats' ? 'its counts are 0' : 'it adds no lines';
     const p = t.problems.length;
     if (p)
-        warnings.push(`memobrain ${cmd}: warning: '${file}': ${p} line${p === 1 ? '' : 's'} could not be read as a JSON object (first: line ${t.problems[0].line}) and ${p === 1 ? 'was' : 'were'} skipped.`);
+        warnings.push(`memobrain ${cmd}: warning: '${file}': ${p} line${p === 1 ? '' : 's'} could not be read as a JSON object of at most 1,000 levels (first: line ${t.problems[0].line}) and ${p === 1 ? 'was' : 'were'} skipped.`);
     if (t.fileKind === 'empty')
         warnings.push(`memobrain ${cmd}: warning: '${file}' holds no records, so ${consequence}.`);
     else if (t.fileKind === 'journal')
@@ -485,9 +504,6 @@ function warningsFor(cmd, file, t, lines) {
     }
     else if (lines.length === 0)
         warnings.push(`memobrain ${cmd}: warning: '${file}' has conversation records but no turn on its live path, so ${consequence}.`);
-    const deep = lines.filter((l) => l.k === 'call' && (l.in === TOO_DEEP || l.out === TOO_DEEP)).length;
-    if (deep)
-        warnings.push(`memobrain ${cmd}: warning: '${file}': ${deep} call${deep === 1 ? '' : 's'} hold a value nested too deeply to hash; ${deep === 1 ? 'its' : 'their'} in or out field reads ${TOO_DEEP}.`);
     const c = t.fileKind === 'transcript' ? cycleRecords(t) : 0;
     if (c)
         warnings.push(`memobrain ${cmd}: warning: '${file}': ${c} record${c === 1 ? '' : 's'} sit${c === 1 ? 's' : ''} on a parentUuid cycle or below one (following the parent links never reaches the start of the session), so the live path through ${c === 1 ? 'it' : 'them'} may be incomplete.`);

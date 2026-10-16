@@ -1,6 +1,6 @@
 // Writes the generated test fixtures (each is introduced by a comment below: labels, unanswered, cycle, rare-shapes,
 // journal-launched, lexer, labels2, errors, parallel, compacted, stale-head, retried3, orphan-first, the cycle-* three,
-// content, parallel-msgid, request-two-turns, errors2, unicode, types-only).
+// content, parallel-msgid, request-two-turns, errors2, unicode, parallel-fail, types-only).
 // Every string in them is invented; the record format follows the hand-written
 // fixtures (edges.jsonl). The output is the same on every run.
 //
@@ -196,6 +196,28 @@ const LEXER_CASES = [
   ['X=$(git rev-parse HEAD) make demo', 'make'],
   ['timeout 5 nice -n 3 env A=1 make demo', 'make'],
   ['2 >ZQXA36 ZQXA37', '2'],
+  // the shapes a third review's surviving mutants printed: each refusal pinned
+  ['A="x\\" ZQXA38 ;" make demo', '(withheld)'],
+  ['A="`" ZQXA39 "`" make demo', '(withheld)'],
+  ['1A=x ZQXA40', '(withheld)'],
+  ['A-B=1 ZQXA41', '(withheld)'],
+  ['X=$(a (b) ZQXA42)', '(withheld)'],
+  ['X=$(ab{ c) make demo', '(withheld)'],
+  ['{ cd /work/demo-project; } ZQXA43', '(withheld)'],
+  ['X="$(a)x ZQXA44;" make demo', '(withheld)'],
+  ['X=$(a)ZQXA45 make demo', '(withheld)'],
+  ['time -pZQXA46 a', '(withheld)'],
+  ['timeout 5ZQXA47 make demo', '(withheld)'],
+  ['nice -5ZQXA48 make demo', '(withheld)'],
+  ['env -iZQXA49 make demo', '(withheld)'],
+  ['ZQXA50 ( ) { make demo; }', '(withheld)'],
+  // after env a NAME=value is an argument: an unquoted $NAME is split by bash; quoted it is one word
+  ['env X=$V make demo', '(withheld)'],
+  ['env X="$V" make demo', 'make'],
+  // after a wrapper, command and exec are programs on PATH, not the shell's builtins
+  ['nohup command make demo', 'command'],
+  ['timeout 5 exec make demo', 'exec'],
+  ['command make demo', 'make'],
 ];
 {
   const f = file('lexer.jsonl', '56565656-7878-4909-8bcb-d0d0d0d0d0d0', 'd9000000');
@@ -459,6 +481,23 @@ for (const [name, pointer] of [['compacted.jsonl', true], ['compacted-nopointer.
   f.result('toolu_unicode_01', 'Invented contents: déjà vu, 日本語, and 🙂🙂 twice.');
   f.text('The invented café notes were read.');
   f.leaf(p);
+  f.write();
+}
+
+// parallel-fail.jsonl: two calls of one response; the first fails, the second (the same verb) succeeds. The second
+// was sent before the failure existed: it is not a retry, and it does not close a chain.
+{
+  const sid = 'dededede-1212-4c4c-8e8e-e2e2e2e2e2e2', pre = 'ea000000';
+  const f = file('parallel-fail.jsonl', sid, pre);
+  const p = f.prompt('Build both invented parts at once.', { promptSource: 'typed' });
+  const a1 = f.uuid(2), a2 = f.uuid(3), r2 = f.uuid(4), r1 = f.uuid(5), t = f.uuid(6), e = env(sid);
+  const msg = (block) => ({ id: 'msg_pfail_01', type: 'message', role: 'assistant', model: 'claude-demo-model', content: [block], stop_reason: 'tool_use', usage: { input_tokens: 10, output_tokens: 20 } });
+  f.raw({ parentUuid: p, ...e, type: 'assistant', message: msg({ type: 'tool_use', id: 'toolu_pfail_01', name: 'Bash', input: { command: 'make part-one' } }), requestId: 'req_pfail_01', uuid: a1, timestamp: '2026-08-01T11:30:02.000Z' });
+  f.raw({ parentUuid: a1, ...e, type: 'assistant', message: msg({ type: 'tool_use', id: 'toolu_pfail_02', name: 'Bash', input: { command: 'make part-two' } }), requestId: 'req_pfail_01', uuid: a2, timestamp: '2026-08-01T11:30:02.100Z' });
+  f.raw({ parentUuid: a2, ...e, type: 'user', message: { role: 'user', content: [{ tool_use_id: 'toolu_pfail_02', type: 'tool_result', content: 'the invented second part built' }] }, uuid: r2, timestamp: '2026-08-01T11:30:03.000Z', toolUseResult: { stdout: 'built', stderr: '' }, sourceToolAssistantUUID: a2 });
+  f.raw({ parentUuid: a1, ...e, type: 'user', message: { role: 'user', content: [{ tool_use_id: 'toolu_pfail_01', type: 'tool_result', content: 'Exit code 2\nthe invented first part failed', is_error: true }] }, uuid: r1, timestamp: '2026-08-01T11:30:04.000Z', toolUseResult: 'Error: Exit code 2', sourceToolAssistantUUID: a1 });
+  f.raw({ parentUuid: r1, ...e, type: 'assistant', message: { id: 'msg_pfail_02', type: 'message', role: 'assistant', model: 'claude-demo-model', content: [{ type: 'text', text: 'One invented part failed.' }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 } }, requestId: 'req_pfail_02', uuid: t, timestamp: '2026-08-01T11:30:05.000Z' });
+  f.leaf('Build both invented parts at once.', t);
   f.write();
 }
 

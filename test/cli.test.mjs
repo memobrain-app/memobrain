@@ -189,7 +189,7 @@ const CASES = [
   { file: DEMO, sid: 'demo.jso', expected: DEMO_EXPECTED, minPayload: 56 },
   { file: VARIETY, sid: 'variety.', expected: VARIETY_EXPECTED, minPayload: 46 },
   { file: BRANCHED, sid: 'branched', expected: BRANCHED_EXPECTED, minPayload: 20,
-    stderr: /^memobrain skeleton: warning: '[^']*branched\.jsonl': 1 line could not be read as a JSON object \(first: line 12\) and was skipped\.\n$/ },
+    stderr: /^memobrain skeleton: warning: '[^']*branched\.jsonl': 1 line could not be read as a JSON object of at most 1,000 levels \(first: line 12\) and was skipped\.\n$/ },
   { file: RETRIED, sid: 'retried.', expected: RETRIED_EXPECTED, minPayload: 10 },
   { file: EDGES, sid: 'edges.js', expected: EDGES_EXPECTED, minPayload: 13 },
   { file: AGENT, sid: 'agent-a0123456', expected: AGENT_EXPECTED, minPayload: 7 },
@@ -230,7 +230,7 @@ const CASES = [
     { k: 'call', id: 'toolu_rtt_01', tool: 'Bash', verb: 'make' }, { k: 'call', id: 'toolu_rtt_02', tool: 'Bash', verb: 'make' },
     { k: 'turn', line: 3, ch: 'typed' }] },
   { file: fixture('errors2.jsonl'), sid: 'errors2.', minPayload: 14, expected: [{ k: 'turn', line: 1, ch: 'typed' },
-    ...[['Bash', 'make', 'exit-1'], ['Bash', 'make', 'exit-2'], ['Bash', 'make', 'hook-block:demo-gate'], ['Bash', 'make', 'hook-block:demo-check'],
+    ...[['Bash', 'make', 'exit-1'], ['Bash', 'make', 'exit-2'], ['Bash', 'make', 'hook-block'], ['Bash', 'make', 'hook-block:demo-check'],
       ['Edit', '.txt', 'no-anchor'], ['Write', '.txt', 'not-read'], ['Edit', '.txt', 'other']].map(([tool, verb, ek], i) => ({ k: 'call', id: `toolu_errors2_${pad2(i + 1)}`, tool, verb, ek }))] },
   { file: fixture('unicode.jsonl'), sid: 'unicode.', minPayload: 3, expected: [{ k: 'turn', line: 1, ch: 'typed' },
     { k: 'call', id: 'toolu_unicode_01', tool: 'Read', verb: '.txt' }] },
@@ -505,7 +505,7 @@ test('a file that is not a transcript: zero counts and warnings that say why', (
   const r = run('stats', file);
   assert.equal(r.code, 0);
   assert.equal(r.out, JSON.stringify({ session: 'not-a-tr', turns: 0, prompts: 0, calls: 0, failures: 0, unanswered: 0, errorClasses: {}, retries: 0, detours: 0, maxHops: 0, hopsOver2: 0 }) + '\n');
-  assert.match(r.err, new RegExp(`'${escapeRe(file)}': 1 line could not be read as a JSON object \\(first: line 3\\) and was skipped`));
+  assert.match(r.err, new RegExp(`'${escapeRe(file)}': 1 line could not be read as a JSON object of at most 1,000 levels \\(first: line 3\\) and was skipped`));
   assert.match(r.err, new RegExp(`'${escapeRe(file)}' has no conversation records .*record types found: \\(none\\), note\\), so its counts are 0`));
   assert.match(r.err, /~\/\.claude\/projects\//);
 });
@@ -547,6 +547,17 @@ test('withheld values: nothing that only label-shaped fields could carry reaches
   assert.equal(parsed(run('skeleton', LABELS).out).filter((o) => o.verb === W || o.tool === W || o.ch === W).length, 13);
 });
 
+test('README: no part of it appears twice (a duplicated block once hid inside a list item)', () => {
+  const readme = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'README.md'), 'utf8');
+  assert.equal(readme.match(/^# memobrain$/gm)?.length, 1, 'the title appears more than once');
+  const seen = new Map();
+  readme.split('\n').forEach((line, i) => {
+    if (line.length < 60) return;
+    assert.ok(!seen.has(line), `line ${i + 1} repeats line ${seen.get(line)}: ${line.slice(0, 60)}`);
+    seen.set(line, i + 1);
+  });
+});
+
 test('README: every row of the table in "The Bash verb" is what the build prints', () => {
   const readme = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'README.md'), 'utf8');
   const section = readme.slice(readme.indexOf('### The Bash verb'), readme.indexOf('## What it reads'));
@@ -577,6 +588,11 @@ test('review transcripts: every output is the one recorded (test/record-review-o
     const r = run(cmd, join(dir, name));
     assert.deepEqual({ code: r.code, out: r.out, err: r.err.split(dir).join('<dir>') }, expected[name][cmd], `${cmd} ${name}`);
   }
+});
+
+test('stats: a call sent in the same response as a failed call is not its retry and closes no chain', () => {
+  const s = JSON.parse(run('stats', fixture('parallel-fail.jsonl')).out);
+  assert.deepEqual([s.calls, s.failures, s.retries, s.detours, s.maxHops], [2, 1, 0, 0, 0]);
 });
 
 test('a file with no conversation records: the warning names its record types, each label-checked', () => {
@@ -638,10 +654,23 @@ test('crafted shapes end in time and keep their counts: forked parallel calls, a
     ];
     writeFileSync(join(dir, 'deep.jsonl'), deepFile.join('\n') + '\n');
     const r = timed(['skeleton', join(dir, 'deep.jsonl')], 15000);
-    const call = parsed(r.out).find((o) => o.k === 'call');
-    assert.equal(call.verb, 'make');
-    for (const v of [call.in, call.out]) assert.match(v, /^(?:[0-9a-f]{12}|\(too deep\))$/);
-    if (call.in === '(too deep)' || call.out === '(too deep)') assert.match(r.err, /hold a value nested too deeply to hash/);
+    assert.deepEqual(parsed(r.out).map((o) => o.k), ['turn']);                      // the two deep lines are skipped
+    assert.match(r.err, /2 lines could not be read as a JSON object of at most 1,000 levels \(first: line 2\) and were skipped/);
+    // (5) an object whose toString is not a function, and an array nested 10,000 deep, in the fields where they once
+    //     stopped the whole file: the file is read, and no input's hash changes
+    const odd = [
+      JSON.stringify({ type: 'user', uuid: 'u', parentUuid: null, promptSource: 'typed', version: { toString: 1 }, message: { role: 'user', content: [{ type: 'text', text: { toString: 1 } }] } }),
+      JSON.stringify({ type: 'assistant', uuid: 'a', parentUuid: 'u', message: { id: { toString: 1 }, role: 'assistant', usage: { input_tokens: { valueOf: 1 } }, content: [{ type: 'tool_use', id: 'to', name: 'Bash', input: { command: 'make odd', note: { toString: 1 } } }] } }),
+      JSON.stringify({ type: 'user', uuid: 'r', parentUuid: 'a', toolUseResult: {}, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'to', content: 'an invented result' }] } }),
+      `{"type":${deep(10000)},"uuid":"x","parentUuid":"r"}`,
+      JSON.stringify({ type: 'last-prompt', leafUuid: 'r' }),
+    ];
+    writeFileSync(join(dir, 'odd.jsonl'), odd.join('\n') + '\n');
+    const o = timed(['skeleton', join(dir, 'odd.jsonl')], 15000);
+    const oc = parsed(o.out).find((x) => x.k === 'call');
+    assert.equal(oc.verb, 'make');
+    assert.equal(oc.in, h12(JSON.stringify({ command: 'make odd', note: { toString: 1 } })));
+    assert.match(o.err, /1 line could not be read as a JSON object of at most 1,000 levels \(first: line 4\)/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
