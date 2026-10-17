@@ -889,6 +889,21 @@ test('a hook block whose bracketed command is longer than 300 characters is stil
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('a hook name needs exactly one word with a script extension, whatever the other word is made of (review 5, D5-8)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  try {
+    const cases = [['[/h/a.sh /h/b+c.sh]', 'hook-block'], ['[/h/b+c.sh]', 'hook-block'], ['[bash /x/one-gate.sh --strict]', 'hook-block:one-gate'], ['[/h/a.sh /h/a.sh]', 'hook-block']];
+    const lines = [{ parentUuid: null, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' }, uuid: uuidOf(1) }];
+    cases.forEach(([bracket], k) => {
+      const text = `PreToolUse:Bash hook error: ${bracket}: invented reason`;
+      lines.push({ parentUuid: uuidOf(2 * k + 1), ...sessionEnv, type: 'assistant', requestId: `q${k}`, message: { role: 'assistant', content: [{ type: 'tool_use', id: `t${k}`, name: 'Bash', input: { command: 'make' } }] }, uuid: uuidOf(2 * k + 2) });
+      lines.push({ parentUuid: uuidOf(2 * k + 2), ...sessionEnv, type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: `t${k}`, content: text, is_error: true }] }, toolUseResult: `Error: ${text}`, uuid: uuidOf(2 * k + 3) });
+    });
+    writeFileSync(join(dir, 'hooks.jsonl'), lines.map((o) => JSON.stringify(o)).join('\n') + '\n');
+    assert.deepEqual(parsed(run('skeleton', join(dir, 'hooks.jsonl')).out).filter((o) => o.k === 'call').map((o) => o.ek), cases.map(([, ek]) => ek));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('a value too large to write as JSON prints (too large), with a warning, and the rest of the file is read (review 4, P4-2)',
   { skip: !process.env.MEMOBRAIN_HEAVY && 'set MEMOBRAIN_HEAVY=1 to run: it writes a file of about 125 MB and needs about 3 GB of memory' }, () => {
     const dir = mkdtempSync(join(tmpdir(), 'memobrain-heavy-'));
@@ -911,6 +926,33 @@ test('a value too large to write as JSON prints (too large), with a warning, and
       const calls = parsed(r.stdout).filter((o) => o.k === 'call');
       assert.deepEqual(calls.map((c) => [c.verb, c.in === '(too large)', /^[0-9a-f]{12}$/.test(c.in)]), [['make', true, false], ['git', false, true]]);
       assert.match(r.stderr, /1 call holds a value too large to write as JSON/);
+      const st = spawnSync(process.execPath, ['--max-old-space-size=3072', CLI, 'stats', join(dir, 'too-large.jsonl')], { encoding: 'utf8', timeout: 300000 });
+      assert.equal(st.status, 0, st.stderr);
+      assert.match(st.stderr, /so it cannot be hashed \(skeleton prints \(too large\) there\)/);
+      rmSync(join(dir, 'too-large.jsonl'));
+      // the parser's own routes (review 5, D5-1): a prompt's text block holding the array, an input on the wire beside
+      // the logged one, and a record written twice whose second copy holds it. None may stop the file.
+      const numbers = `[${'1e20,'.repeat(count - 1)}1e20]`;
+      const shapes = {
+        'prompt-text-array': [`{"parentUuid":null,"type":"user","uuid":"${uuidOf(1)}","sessionId":"s","promptSource":"typed","message":{"role":"user","content":[{"type":"text","text":${numbers}}]}}`,
+          JSON.stringify({ parentUuid: uuidOf(1), ...sessionEnv, type: 'assistant', requestId: 'q1', message: { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'git status' } }] }, uuid: uuidOf(2) }),
+          tail[0]],
+        'wire-input': [head[0],
+          `{"parentUuid":"${uuidOf(1)}","type":"assistant","uuid":"${uuidOf(2)}","sessionId":"s","requestId":"q1","wireToolInputs":{"t1":${numbers}},"message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"git status"}}]}}`,
+          tail[0]],
+        'replay': [head[0],
+          JSON.stringify({ parentUuid: uuidOf(1), ...sessionEnv, type: 'assistant', requestId: 'q1', message: { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'git status' } }] }, uuid: uuidOf(2) }),
+          tail[0],
+          `{"parentUuid":"${uuidOf(1)}","type":"assistant","uuid":"${uuidOf(2)}","sessionId":"s","requestId":"q1","x":${numbers},"message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"git status"}}]}}`],
+      };
+      for (const [name, lines] of Object.entries(shapes)) {
+        const f = join(dir, `${name}.jsonl`);
+        writeFileSync(f, lines.join('\n') + '\n');
+        const q = spawnSync(process.execPath, ['--max-old-space-size=3072', CLI, 'skeleton', f], { encoding: 'utf8', timeout: 300000, maxBuffer: 1 << 24 });
+        assert.equal(q.status, 0, `${name}: ${q.stderr}`);
+        assert.equal(parsed(q.stdout).filter((o) => o.k === 'call').length, 1, `${name}: the call is still read`);
+        rmSync(f);
+      }
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 

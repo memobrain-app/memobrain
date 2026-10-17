@@ -239,6 +239,21 @@ const LEXER_CASES = [
   ['nice -n 5', 'nice'],
   ['nice -19', 'nice'],
   ['nice -n 5; make demo', 'nice'],
+  // a redirection right after a wrapper or its options: bash applies it and runs the next word, which this does not read
+  ['nice -19>/dev/null make demo', '(withheld)'],
+  ['nice -n 5>/dev/null make demo', '(withheld)'],
+  ['nice -19&>/dev/null make demo', '(withheld)'],
+  ['nohup >/dev/null make demo', '(withheld)'],
+  ['env &>/dev/null make demo', '(withheld)'],
+  ['timeout 5 >/dev/null make demo', '(withheld)'],
+  ['command <input.txt make demo', '(withheld)'],
+  // time right after the time keyword is the keyword again (bash's grammar); after nohup it is a program on PATH
+  ['time time make demo', 'make'],
+  ['time -p time make demo', 'make'],
+  ['time time -p make demo', 'make'],
+  ['nohup time make demo', 'time'],
+  // env's assignments count toward the limit of 63 words before the program
+  ['env ' + 'A=1 '.repeat(70) + 'make demo', '(withheld)'],
 ];
 {
   const f = file('lexer.jsonl', '56565656-7878-4909-8bcb-d0d0d0d0d0d0', 'd9000000');

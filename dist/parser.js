@@ -136,7 +136,7 @@ export function isInputTurn(r) {
 }
 function leadText(r) {
     const c = r?.message?.content;
-    const s = typeof c === 'string' ? c : Array.isArray(c) ? c.filter((b) => b?.type === 'text').map((b) => String(b.text ?? '')).join('') : '';
+    const s = typeof c === 'string' ? c : Array.isArray(c) ? c.filter((b) => b?.type === 'text').map((b) => (typeof b.text === 'string' ? b.text : '')).join('') : '';
     return s.trimStart();
 }
 const bump = (m, k) => {
@@ -395,6 +395,29 @@ function stable(v, depth = 0) {
         return '[' + v.map((x) => stable(x, depth + 1)).join(',') + ']';
     return '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + stable(v[k], depth + 1)).join(',') + '}';
 }
+/** Whether two values differ, by stable(). A value too long to write out (past JavaScript's limit on a string's length)
+ *  cannot be compared, and counts as differing; it must not stop the file. */
+function differs(a, b) {
+    try {
+        return stable(a) !== stable(b);
+    }
+    catch (e) {
+        if (e instanceof RangeError)
+            return true;
+        throw e;
+    }
+}
+/** Whether two records serialize alike; one too long to write out counts as differing. */
+function sameJson(a, b) {
+    try {
+        return JSON.stringify(a) === JSON.stringify(b);
+    }
+    catch (e) {
+        if (e instanceof RangeError)
+            return false;
+        throw e;
+    }
+}
 function buildToolCalls(nodes, records, replay) {
     const calls = new Map();
     const nodeByIndex = [];
@@ -410,7 +433,7 @@ function buildToolCalls(nodes, records, replay) {
             const wire = n.record.wireToolInputs?.[t.id];
             calls.set(t.id, {
                 id: t.id, name: t.name, input: t.input, caller: t.caller,
-                wireInput: wire, wireDiffers: wire !== undefined && stable(wire) !== stable(t.input),
+                wireInput: wire, wireDiffers: wire !== undefined && differs(wire, t.input),
                 callNode: n, isError: false,
                 spillFileHint: `<session>/tool-results/${t.id}.txt`,
             });
@@ -462,7 +485,7 @@ export function parseTranscript(text, opts = {}) {
             // counted, never merged: a replay is reported, and every census below is over first copies
             stats.replayedCopies++;
             const first = nodes.get(r.uuid).record;
-            if (JSON.stringify(first) !== JSON.stringify(r))
+            if (!sameJson(first, r))
                 stats.replayedDiffering++;
             continue;
         }

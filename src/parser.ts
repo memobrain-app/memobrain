@@ -412,7 +412,7 @@ export function isInputTurn(r: any): boolean {
 }
 function leadText(r: any): string {
   const c = r?.message?.content;
-  const s = typeof c === 'string' ? c : Array.isArray(c) ? c.filter((b: any) => b?.type === 'text').map((b: any) => String(b.text ?? '')).join('') : '';
+  const s = typeof c === 'string' ? c : Array.isArray(c) ? c.filter((b: any) => b?.type === 'text').map((b: any) => (typeof b.text === 'string' ? b.text : '')).join('') : '';
   return s.trimStart();
 }
 
@@ -656,6 +656,18 @@ function stable(v: any, depth = 0): string {
   return '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + stable(v[k], depth + 1)).join(',') + '}';
 }
 
+/** Whether two values differ, by stable(). A value too long to write out (past JavaScript's limit on a string's length)
+ *  cannot be compared, and counts as differing; it must not stop the file. */
+function differs(a: unknown, b: unknown): boolean {
+  try { return stable(a) !== stable(b); }
+  catch (e) { if (e instanceof RangeError) return true; throw e; }
+}
+/** Whether two records serialize alike; one too long to write out counts as differing. */
+function sameJson(a: unknown, b: unknown): boolean {
+  try { return JSON.stringify(a) === JSON.stringify(b); }
+  catch (e) { if (e instanceof RangeError) return false; throw e; }
+}
+
 function buildToolCalls(nodes: Map<Uuid, TreeNode>, records: CCRecord[], replay: boolean[]): ToolCall[] {
   const calls = new Map<string, ToolCall>();
   const nodeByIndex: TreeNode[] = [];
@@ -669,7 +681,7 @@ function buildToolCalls(nodes: Map<Uuid, TreeNode>, records: CCRecord[], replay:
       const wire = (n.record as any).wireToolInputs?.[t.id];
       calls.set(t.id, {
         id: t.id, name: t.name, input: t.input, caller: t.caller,
-        wireInput: wire, wireDiffers: wire !== undefined && stable(wire) !== stable(t.input),
+        wireInput: wire, wireDiffers: wire !== undefined && differs(wire, t.input),
         callNode: n, isError: false,
         spillFileHint: `<session>/tool-results/${t.id}.txt`,
       });
@@ -720,7 +732,7 @@ export function parseTranscript(text: string, opts: ParseOptions = {}): Transcri
       // counted, never merged: a replay is reported, and every census below is over first copies
       stats.replayedCopies++;
       const first = nodes.get((r as any).uuid)!.record;
-      if (JSON.stringify(first) !== JSON.stringify(r)) stats.replayedDiffering++;
+      if (!sameJson(first, r)) stats.replayedDiffering++;
       continue;
     }
     bump(stats.byType, r.type as string);

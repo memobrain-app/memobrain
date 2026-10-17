@@ -39,9 +39,10 @@ and uses no network.
 It follows each session's live path: the branch the session ended on, as the
 transcript's own last-prompt record names it (without one, the branch of the
 last record written), joined across compactions and late-written error
-records. No line holds content. A turn line gives the address of its prompt;
-a call line gives the addresses of the call and its result, and hashes of what
-went in and what came out. An address is <prefix>:L<line number>: the prefix
+records. No line holds a prompt, a reply, a tool input or a tool output (the
+labels are short words read from them, by the label rule below). A turn line
+gives the address of its prompt; a call line gives the addresses of the call
+and its result, and hashes of what went in and what came out. An address is <prefix>:L<line number>: the prefix
 is the file name's first 8 characters, or, for a subagent's agent-<id>.jsonl,
 agent- and the id's first 8. Files whose names start with the same 8
 characters get the same prefix: give them to separate runs.
@@ -70,7 +71,8 @@ skeleton, one line per tool call, after the turn it belongs to:
                 blank and comment lines; cd DIR (with redirections) followed
                 by && ; or a newline; NAME=value with a plain, '...', simple
                 "..." or $NAME value; an opening ( { or !; the wrappers nohup,
-                command, exec, time (-p; only where a command starts), env
+                command, exec, time (-p; where a command starts, or right
+                after time), env
                 (-i, NAME=value; an unquoted $NAME withholds the verb),
                 timeout (a duration) and nice (-n N or -N). After nohup, env,
                 nice, timeout or exec, which look the next word up as a file,
@@ -81,17 +83,20 @@ skeleton, one line per tool call, after the turn it belongs to:
                 values is labelled by the program inside its first $(...) when
                 that is made of such words. A wrapper with nothing after it
                 but its own options is the program; [ [[ and shell keywords
-                print as themselves. Anything else before the program, more
-                than 63 words or 15 commands before it, a program that is not
-                a plain word, or a function definition gives (withheld).
+                print as themselves. Anything else before the program (a
+                redirection after a wrapper too), more than 63 assignments,
+                cd commands and wrappers before it, more than 15 commands
+                passed over, a program that is not a plain word, or a
+                function definition gives (withheld).
                 Read, Edit, Write, NotebookEdit: the file's extension (its
                 name when it has none; (none) when there is no path, or it
                 ends in /). Agent, Task: the subagent type (agent when the call
                 names none). Skill: the skill name (skill when it names none).
                 Other tools: the name
-  in            sha256 of the input as JSON.stringify writes it (integer-like
-                keys first; a missing input counts as {}), first 12 hex
-                characters; (too large) when the input, written as JSON,
+  in            sha256 of the input as JSON.stringify writes it (keys that are
+                whole numbers up to 4294967294 first, ascending; a missing
+                input counts as {}), first 12 hex characters; (too large)
+                when the input, written as JSON,
                 would pass JavaScript's limit on a string's length
   ok            true when the call succeeded; false when it failed (its
                 result is marked is_error, or Claude Code wrote the error as
@@ -227,7 +232,7 @@ function bashVerb(s, depth = 0) {
             }
             break;
         }
-        let first = true, next = false, wrapped = false, lookedUp = false;
+        let first = true, next = false, wrapped = false, lookedUp = false, afterTime = false;
         while (!next) {
             if (i >= s.length)
                 return sub ?? '(empty)';
@@ -302,12 +307,13 @@ function bashVerb(s, depth = 0) {
                 next = true;
                 continue;
             }
-            // time is the keyword only where a command starts; after a wrapper that looks its next word up on PATH, command
-            // and exec are files there, not the shell's builtins
-            if (WRAPPERS.has(x) && (x !== 'time' || first) && !(lookedUp && (x === 'command' || x === 'exec'))) {
+            // time is the keyword where a command starts, and right after the time keyword (bash's grammar accepts it there
+            // too); after a wrapper that looks its next word up on PATH, command and exec are files there, not the builtins
+            if (WRAPPERS.has(x) && (x !== 'time' || first || afterTime) && !(lookedUp && (x === 'command' || x === 'exec'))) {
                 first = false;
                 wrapped = true;
                 lookedUp = LOOK_UP_ON_PATH.has(x);
+                afterTime = x === 'time';
                 if (x === 'time' && s.startsWith('-p', i) && ends(i + 2)) {
                     i += 2;
                     blank();
@@ -332,6 +338,8 @@ function bashVerb(s, depth = 0) {
                         blank();
                     }
                     for (let a = at(NAME_EQ, i); a !== null; a = at(NAME_EQ, i)) {
+                        if (++words > 64)
+                            return WITHHELD; // env's assignments count toward the limit
                         const e = passable(i + a.length, false);
                         if (e < 0)
                             return WITHHELD;
@@ -339,7 +347,10 @@ function bashVerb(s, depth = 0) {
                         blank();
                     }
                 }
-                if (i >= s.length || separator() || '|&<>)'.includes(s[i]))
+                // a redirection after a wrapper (or its options): the program comes after it, and this reader does not pass one
+                if (s[i] === '<' || s[i] === '>' || s.startsWith('&>', i))
+                    return WITHHELD;
+                if (i >= s.length || separator() || '|&)'.includes(s[i]))
                     return x; // the wrapper alone: `env | grep x`
                 if (s[i] === '-')
                     return WITHHELD; // an option it does not read
@@ -399,6 +410,7 @@ function verbOf(tool, input) {
  *  when it is longer than 48 characters or fails the label rule. A bracket longer than 300 characters is a plain
  *  hook-block. An exit code is read only from a leading "Exit code N", before anything else, so a command's own
  *  output cannot change its class. */
+const SCRIPT_EXTENSION = /\.(?:sh|bash|mjs|cjs|js|ts|py|rb|pl)$/;
 function errorClass(text) {
     const first = (text.split('\n').find((l) => l.trim()) || '').slice(0, 400);
     const opening = /^PreToolUse:[\w.:-]* hook error: \[/.exec(first);
@@ -406,10 +418,11 @@ function errorClass(text) {
         const hook = /^([^\]]{0,300})\]/.exec(first.slice(opening[0].length));
         if (!hook)
             return 'hook-block';
-        const scripts = hook[1].trim().split(/\s+/).map((w) => /(?:^|[\\/])([\w.-]+)\.(?:sh|bash|mjs|cjs|js|ts|py|rb|pl)$/.exec(w)).filter(Boolean);
-        // one script word is the hook's; with two or more, one of them is an argument, and which is not certain
-        const script = scripts.length === 1 ? scripts[0] : null;
-        return script && FILE_LABEL.test(script[1]) && script[1].length <= 48 ? `hook-block:${script[1]}` : 'hook-block';
+        // every word that ends in a script extension counts: one is the hook's; with two or more, one of them is an argument,
+        // and which is not certain. The one word's name must then be label-shaped and at most 48 characters.
+        const scripts = hook[1].trim().split(/\s+/).filter((w) => SCRIPT_EXTENSION.test(w));
+        const name = scripts.length === 1 ? /(?:^|[\\/])([\w.-]+)\.[a-z]+$/.exec(scripts[0])?.[1] : undefined;
+        return name && FILE_LABEL.test(name) && name.length <= 48 ? `hook-block:${name}` : 'hook-block';
     }
     const ex = /^\s*Exit code (\d{1,3})\b/.exec(first);
     if (ex)
@@ -562,7 +575,7 @@ function warningsFor(cmd, file, t, lines) {
         warnings.push(`memobrain ${cmd}: warning: '${file}' has conversation records but no turn on its live path, so ${consequence}.`);
     const large = lines.filter((l) => l.k === 'call' && (l.in === TOO_LARGE || l.out === TOO_LARGE)).length;
     if (large)
-        warnings.push(`memobrain ${cmd}: warning: '${file}': ${large} call${large === 1 ? ' holds' : 's hold'} a value too large to write as JSON (it would pass JavaScript's limit on a string's length), so ${large === 1 ? 'its' : 'their'} in or out prints ${TOO_LARGE}.`);
+        warnings.push(`memobrain ${cmd}: warning: '${file}': ${large} call${large === 1 ? ' holds' : 's hold'} a value too large to write as JSON (it would pass JavaScript's limit on a string's length), ${cmd === 'stats' ? 'so it cannot be hashed (skeleton prints ' + TOO_LARGE + ' there)' : `so ${large === 1 ? 'its' : 'their'} in or out prints ${TOO_LARGE}`}.`);
     const c = t.fileKind === 'transcript' ? cycleRecords(t) : 0;
     if (c)
         warnings.push(`memobrain ${cmd}: warning: '${file}': ${c} record${c === 1 ? '' : 's'} sit${c === 1 ? 's' : ''} on a parentUuid cycle or below one (following the parent links never reaches the start of the session), so the live path through ${c === 1 ? 'it' : 'them'} may be incomplete.`);
@@ -586,6 +599,12 @@ function readVersion() {
 const out = (s) => { if (s)
     process.stdout.write(s); };
 const err = (s) => { process.stderr.write(s.endsWith('\n') ? s : s + '\n'); };
+/** The skeleton is written in chunks, never joined whole: millions of call lines can pass JavaScript's limit on a
+ *  string's length even when the file itself could be read. */
+function writeSkeleton(lines) {
+    for (let i = 0; i < lines.length; i += 10000)
+        out(lines.slice(i, i + 10000).map((l) => JSON.stringify(l) + '\n').join(''));
+}
 function main(argv) {
     const cmd = argv[0];
     if (cmd === undefined) {
@@ -654,7 +673,10 @@ function main(argv) {
             const lines = skeletonOf(file, t);
             for (const w of warningsFor(cmd, file, t, lines))
                 err(w);
-            out(cmd === 'skeleton' ? lines.map((l) => JSON.stringify(l) + '\n').join('') : JSON.stringify(statsOf(file, lines)) + '\n');
+            if (cmd === 'skeleton')
+                writeSkeleton(lines);
+            else
+                out(JSON.stringify(statsOf(file, lines)) + '\n');
         }
         catch (e) {
             err(`memobrain ${cmd}: '${file}': stopped with an internal error, so nothing was written for it: ${e?.message ?? String(e)}. This is a bug in memobrain; the other files are processed as usual.`);
