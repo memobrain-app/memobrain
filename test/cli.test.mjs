@@ -930,12 +930,15 @@ test('README and --help name every value the output can hold, and claim nothing 
   // a phrase may wrap across lines (--help is cut at 80 columns): blanks are collapsed before matching
   for (const [where, text] of [['README', README_TEXT()], ['--help', run('--help').out]].map(([w, t]) => [w, t.replace(/\s+/g, ' ')])) {
     for (const v of ['(none)', '(empty)', '(withheld)', '(too large)']) assert.ok(text.includes(v), `${where} does not name ${v}`);
-    assert.match(text, /\bnone\b[^.;|]*no channel/, `${where} does not say what the channel none means`);
+    assert.match(text, /`?none`? when that word is empty/, `${where} does not say what the channel none means`);
+    assert.match(text, /`?input`? \(the record names no channel\)/, `${where} does not say what the channel input means`);
+    assert.match(text, /`?agent`? when the call names none/, `${where} does not name the verb agent`);
+    assert.match(text, /`?skill`? when it names none/, `${where} does not name the verb skill`);
     assert.doesNotMatch(text, /keys in the transcript's order/, `${where} still claims the transcript's key order`);
     assert.doesNotMatch(text, /Every payload is replaced by an address and a hash/, `${where} still says every line carries a hash`);
     assert.match(text, /unquoted `?\$NAME/, `${where} does not give env's rule for an unquoted $NAME`);
     assert.match(text, /after `?command`? or `?time`?/i, `${where} does not say what command and exec are after command or time`);
-    assert.match(text, /none when two or more do/, `${where} does not say a hook name needs exactly one script word`);
+    assert.match(text, /hook-block`?,? when two or more words do|when two or more words do,[^.]*plain `?hook-block/, `${where} does not say a hook name needs exactly one script word`);
   }
   assert.doesNotMatch(pkg.description, /every turn and tool call as an address and a hash/i, 'package.json still says every turn has a hash');
 });

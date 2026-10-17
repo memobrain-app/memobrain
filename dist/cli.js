@@ -43,15 +43,18 @@ records. No line holds content. A turn line gives the address of its prompt;
 a call line gives the addresses of the call and its result, and hashes of what
 went in and what came out. An address is <prefix>:L<line number>: the prefix
 is the file name's first 8 characters, or, for a subagent's agent-<id>.jsonl,
-agent- and the id's first 8.
+agent- and the id's first 8. Files whose names start with the same 8
+characters get the same prefix: give them to separate runs.
 
 skeleton, one line per turn:
   k             "turn"
   a             address of the prompt
   ta            turn id: <prefix>:T001, T002, ...
-  ch            channel the prompt came through: typed, sdk, input, task,
-                loop, parent, or the record's own word for another agent
-                (for example peer); none when the record names no channel
+  ch            channel the prompt came through: typed (typed at the CLI),
+                sdk (sent through the SDK or another entry point), input (the
+                record names no channel), task, loop, parent, or the record's
+                own word for another agent (for example peer); none when that
+                word is empty
   n             length of the prompt text (JavaScript string length: UTF-16
                 code units)
 
@@ -83,8 +86,9 @@ skeleton, one line per tool call, after the turn it belongs to:
                 a plain word, or a function definition gives (withheld).
                 Read, Edit, Write, NotebookEdit: the file's extension (its
                 name when it has none; (none) when there is no path, or it
-                ends in /). Agent, Task: the subagent type. Skill: the skill
-                name. Other tools: the name
+                ends in /). Agent, Task: the subagent type (agent when the call
+                names none). Skill: the skill name (skill when it names none).
+                Other tools: the name
   in            sha256 of the input as JSON.stringify writes it (integer-like
                 keys first; a missing input counts as {}), first 12 hex
                 characters; (too large) when the input, written as JSON,
@@ -93,16 +97,18 @@ skeleton, one line per tool call, after the turn it belongs to:
                 result is marked is_error, or Claude Code wrote the error as
                 a string in toolUseResult); null when no result was recorded
                 (the session ended, or the file was cut, before the call
-                returned)
+                returned, or the call was still running when the file was
+                read)
   ek            error class, only when the call failed, from the result's
                 first line: exit-<code> (a leading "Exit code N", read
                 first), hook-block:<hook script name> or hook-block (Claude
                 Code's own format only: PreToolUse:<tool> hook error:
                 [<command>]; the name is the one word in the brackets with a
                 script extension (.sh .bash .py .js .mjs .cjs .ts .rb .pl),
-                cut at the extension, none when two or more do, at most 48
-                characters; a bracket longer than 300 characters gives
-                hook-block), no-anchor, not-read, bad-input, denied, other
+                cut at the extension, at most 48 characters; a plain
+                hook-block when two or more words do, when the name is
+                longer, or when the bracket is longer than 300 characters),
+                no-anchor, not-read, bad-input, denied, other
   r             address of the result, or null when none was recorded
   out           sha256 of the result text (UTF-8), first 12 hex characters;
                 of the whole result as JSON when it holds anything but text
@@ -124,7 +130,7 @@ stats, one line per file:
   unanswered    tool calls with no recorded result
   errorClasses  failures by error class
   retries       calls right after a failed call in the same turn, with the
-                same tool, issued after its result
+                same tool (any input), issued after its result
   detours       the same, with a different tool
   maxHops       the longest chain of failures with one verb, each issued
                 after the previous one's result, that a later success with
