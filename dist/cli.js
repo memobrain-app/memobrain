@@ -14,7 +14,7 @@
 // No network, no telemetry.
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { basename, extname } from 'node:path';
+import { basename, extname, resolve } from 'node:path';
 import { parseTranscript, repairedLivePath, turnsOf, inputChannel } from './parser.js';
 const USAGE = `Usage:
   memobrain skeleton <file.jsonl>...   one JSON line per turn and per tool call
@@ -45,8 +45,8 @@ gives the address of its prompt; a call line gives the addresses of the call
 and its result, and hashes of what went in and what came out. An address is
 <prefix>:L<line number>: the prefix is the file name's first 8 characters,
 or, for a subagent's agent-<id>.jsonl, agent- and the id's first 8. Files
-that get the same prefix cannot be told apart in one run: give them to
-separate runs.
+that get the same prefix cannot be told apart in one run (a warning names
+them): give them to separate runs.
 
 skeleton, one line per turn:
   k             "turn"
@@ -111,12 +111,16 @@ skeleton, one line per tool call, after the turn it belongs to:
                 Code's own format only: PreToolUse:<tool> hook error:
                 [<command>]; the name is the last part of the path of the one
                 word in the brackets with a script extension (.sh .bash .py
-                .js .mjs .cjs .ts .rb .pl), cut at the extension, when it is
-                made of ASCII letters, digits, _ . and - and is at most 48
-                characters; a plain hook-block when two or more words do,
-                when the name does not qualify, or when the bracket is longer
-                than 300 characters), no-anchor, not-read, bad-input,
-                denied, other
+                .js .mjs .cjs .ts .rb .pl; quotes and punctuation around it
+                are not part of it), cut at the extension, when that word is
+                the command or comes right after an interpreter (node, deno,
+                bun, python, bash, sh, zsh, dash, ksh, ruby, perl, tsx,
+                ts-node), after any leading env (-i) and NAME=value words;
+                and when it is made of ASCII letters, digits, _ . and - and is
+                at most 48 characters; a plain hook-block when two or more
+                words do, when the word stands anywhere else, when the name
+                does not qualify, or when the bracket is longer than 300
+                characters), no-anchor, not-read, bad-input, denied, other
   r             address of the result, or null when none was recorded
   out           sha256 of the result text (UTF-8), first 12 hex characters;
                 of the whole result as JSON when it holds anything but text
@@ -127,7 +131,8 @@ skeleton, one line per tool call, after the turn it belongs to:
 A label (tool, verb, ch, the hook name in ek) is printed only when it looks
 like one: at most 64 ASCII letters, digits and . _ : + - (a file name or
 extension: without ':'; the shell's [ and [[ as they are). Anything else
-prints as (withheld).
+prints as (withheld), except that a hook name that does not qualify gives a
+plain hook-block.
 
 stats, one line per file:
   session       the file's address prefix
@@ -149,8 +154,11 @@ stats, one line per file:
 
 Warnings go to stderr: lines that are not JSON objects (or are nested more
 than 1,000 levels deep), files with nothing to show (empty, a workflow journal,
-no conversation records, no turns), records whose parent links loop, and
-values too large to hash, so a zero never reads as a clean result.
+no conversation records, no turns), records whose parent links loop, values
+too large to hash, files in one run that share a prefix, and records whose
+response was read from their parent links (no requestId and no string
+message.id), so a zero never reads as a clean result. An internal error is
+reported by its kind and where in memobrain it happened, never its message.
 
 Exit status: 0 when every file was processed, 1 when a file could not be read
 or processed, 2 on a usage error.
@@ -409,11 +417,16 @@ function verbOf(tool, input) {
 /** A failed call's error CLASS, by fixed rules over the result's FIRST line: a label, never the text. A hook block
  *  is recognised only in the harness's own format (PreToolUse:<tool> hook error: [<command>]: ...). The hook's name is
  *  the one word inside those brackets that ends in a script extension (.sh .bash .py .js .mjs .cjs .ts .rb .pl), cut at
- *  the extension: none when two or more words do (one of them is an argument, and which is not certain), and none
- *  when it is longer than 48 characters or fails the label rule. A bracket longer than 300 characters is a plain
- *  hook-block. An exit code is read only from a leading "Exit code N", before anything else, so a command's own
- *  output cannot change its class. */
+ *  the extension, when that word stands where a command's script does: first, or right after an interpreter. None when
+ *  two or more words end in an extension (one of them is an argument, and which is not certain), none when the one
+ *  such word stands anywhere else (an argument, an option's value, an assignment), and none when the name is longer
+ *  than 48 characters or fails the label rule. A bracket longer than 300 characters is a plain hook-block. An exit code
+ *  is read only from a leading "Exit code N", before anything else, so a command's own output cannot change its class. */
 const SCRIPT_EXTENSION = /\.(?:sh|bash|mjs|cjs|js|ts|py|rb|pl)$/;
+/** The programs a hook's script may follow, as the bracket's first word (a path is cut to its last part). */
+const INTERPRETER = /^(?:node(?:js)?|deno|bun|python[\d.]*|bash|sh|zsh|dash|ksh|ruby|perl|tsx|ts-node)$/;
+/** Quotes, backquotes and punctuation that stand around a word in a command without being part of it. */
+const AROUND = /^["'`(]+|["'`;)|&]+$/g;
 function errorClass(text) {
     const first = (text.split('\n').find((l) => l.trim()) || '').slice(0, 400);
     const opening = /^PreToolUse:[\w.:-]* hook error: \[/.exec(first);
@@ -421,10 +434,26 @@ function errorClass(text) {
         const hook = /^([^\]]{0,300})\]/.exec(first.slice(opening[0].length));
         if (!hook)
             return 'hook-block';
-        // every word that ends in a script extension counts: one is the hook's; with two or more, one of them is an argument,
-        // and which is not certain. The one word's name must then be label-shaped and at most 48 characters.
-        const scripts = hook[1].trim().split(/\s+/).filter((w) => SCRIPT_EXTENSION.test(w));
-        const name = scripts.length === 1 ? /(?:^|[\\/])([\w.-]+)\.[a-z]+$/.exec(scripts[0])?.[1] : undefined;
+        // every word that ends in a script extension counts, once the quotes and punctuation around it are taken off: one
+        // is the hook's; with two or more, one of them is an argument, and which is not certain. The one such word names
+        // the hook only where a command's script stands, after any leading env (with -i) and NAME=value words: as the
+        // command itself, or right after an interpreter. Measured over every hook block in the transcripts at hand: 897
+        // `bash <script>`, 2 `env NAME=value ... python3 <script>`, 67 with no script word. Anywhere else the word may
+        // be an argument, an option's value or an assignment. The name must then be label-shaped and at most 48 characters.
+        const words = hook[1].trim().split(/\s+/).map((w) => w.replace(AROUND, ''));
+        const scripts = words.flatMap((w, i) => (SCRIPT_EXTENSION.test(w) ? [i] : []));
+        const at = scripts.length === 1 ? scripts[0] : -1;
+        const lastPart = (w) => w?.split(/[\\/]/).pop() ?? '';
+        let k = 0;
+        if (lastPart(words[k]) === 'env') {
+            k++;
+            if (words[k] === '-i')
+                k++;
+        }
+        while (k < words.length && /^[A-Za-z_]\w*=/.test(words[k]))
+            k++;
+        const word = at === k || (at === k + 1 && INTERPRETER.test(lastPart(words[k]))) ? words[at] : undefined;
+        const name = word ? /(?:^|[\\/])([\w.-]+)\.[a-z]+$/.exec(word)?.[1] : undefined;
         return name && FILE_LABEL.test(name) && name.length <= 48 ? `hook-block:${name}` : 'hook-block';
     }
     const ex = /^\s*Exit code (\d{1,3})\b/.exec(first);
@@ -579,6 +608,9 @@ function warningsFor(cmd, file, t, lines) {
     const large = lines.filter((l) => l.k === 'call' && (l.in === TOO_LARGE || l.out === TOO_LARGE)).length;
     if (large)
         warnings.push(`memobrain ${cmd}: warning: '${file}': ${large} call${large === 1 ? ' holds' : 's hold'} a value too large to write as JSON (it would pass JavaScript's limit on a string's length), ${cmd === 'stats' ? 'so it cannot be hashed (skeleton prints ' + TOO_LARGE + ' there)' : `so ${large === 1 ? 'its' : 'their'} in or out prints ${TOO_LARGE}`}.`);
+    const g = t.stats.requestKeyGuessed;
+    if (g)
+        warnings.push(`memobrain ${cmd}: warning: '${file}': ${g} assistant record${g === 1 ? ' carries' : 's carry'} neither a requestId nor a string message.id, so which records form one response was read from their parent links; a parallel call's turn may be misread.`);
     const c = t.fileKind === 'transcript' ? cycleRecords(t) : 0;
     if (c)
         warnings.push(`memobrain ${cmd}: warning: '${file}': ${c} record${c === 1 ? '' : 's'} sit${c === 1 ? 's' : ''} on a parentUuid cycle or below one (following the parent links never reaches the start of the session), so the live path through ${c === 1 ? 'it' : 'them'} may be incomplete.`);
@@ -599,6 +631,44 @@ function cannotRead(cmd, file, e) {
 function readVersion() {
     return String(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version);
 }
+function printVersion() {
+    try {
+        out(readVersion() + '\n');
+        return 0;
+    }
+    catch (e) {
+        err(`memobrain: cannot read the version from package.json next to this program: ${e?.message ?? String(e)}`);
+        return 1;
+    }
+}
+/** An internal error by its kind and by the place in memobrain's code where it was raised, never by its message: a
+ *  message can quote the value that caused it, and so could a future bug's, with the transcript's text in it. */
+function internalError(e) {
+    const kind = e instanceof Error && LABEL.test(e.name) ? e.name : 'Error';
+    const frames = e instanceof Error && typeof e.stack === 'string' ? e.stack.split('\n').slice(1) : [];
+    const frame = frames.map((l) => /([^()\s]+?):(\d+):\d+\)?$/.exec(l.trim())).find((m) => m !== null);
+    const file = frame ? frame[1].split(/[\\/]/).pop() ?? '' : '';
+    return frame && FILE_LABEL.test(file) ? `${kind} at ${file}:${frame[2]}` : kind;
+}
+/** Files that get one address prefix cannot be told apart in one run's output: say so, naming them. */
+function prefixCollisions(cmd, files) {
+    const byPrefix = new Map();
+    for (const f of files) {
+        const p = prefixOf(f), l = byPrefix.get(p) ?? [];
+        if (!l.some((x) => resolve(x) === resolve(f)))
+            l.push(f); // the same file twice is not a collision
+        byPrefix.set(p, l);
+    }
+    const warnings = [];
+    for (const [p, l] of byPrefix) {
+        if (l.length < 2)
+            continue;
+        const names = l.slice(0, 4).map((f) => `'${f}'`), more = l.length - names.length;
+        const list = more ? `${names.join(', ')} and ${more} more` : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+        warnings.push(`memobrain ${cmd}: warning: ${list} share the address prefix '${p}', so their lines cannot be told apart in this run's output; run them separately.`);
+    }
+    return warnings;
+}
 const out = (s) => { if (s)
     process.stdout.write(s); };
 const err = (s) => { process.stderr.write(s.endsWith('\n') ? s : s + '\n'); };
@@ -618,16 +688,8 @@ function main(argv) {
         out(HELP);
         return 0;
     }
-    if (cmd === '--version' || cmd === '-v') {
-        try {
-            out(readVersion() + '\n');
-            return 0;
-        }
-        catch (e) {
-            err(`memobrain: cannot read the version from package.json next to this program: ${e?.message ?? String(e)}`);
-            return 1;
-        }
-    }
+    if (cmd === '--version' || cmd === '-v')
+        return printVersion();
     if (cmd !== 'skeleton' && cmd !== 'stats') {
         if (cmd.startsWith('-'))
             err(`memobrain: unknown option '${cmd}'. The options are --help and --version.\n\n${USAGE}`);
@@ -646,6 +708,8 @@ function main(argv) {
             out(HELP);
             return 0;
         }
+        if (!optionsEnded && (a === '--version' || a === '-v'))
+            return printVersion();
         if (!optionsEnded && a === '-') {
             err(`memobrain ${cmd}: reading from standard input ('-') is not supported. Pass the transcript's path, e.g. memobrain ${cmd} ~/.claude/projects/<project>/<session>.jsonl`);
             return 2;
@@ -661,6 +725,7 @@ function main(argv) {
         return 2;
     }
     let failed = 0;
+    const done = [];
     for (const file of files) {
         let text;
         try {
@@ -680,12 +745,15 @@ function main(argv) {
                 writeSkeleton(lines);
             else
                 out(JSON.stringify(statsOf(file, lines)) + '\n');
+            done.push(file);
         }
         catch (e) {
-            err(`memobrain ${cmd}: '${file}': stopped with an internal error, so nothing was written for it: ${e?.message ?? String(e)}. This is a bug in memobrain; the other files are processed as usual.`);
+            err(`memobrain ${cmd}: '${file}': stopped with an internal error (${internalError(e)}), so nothing was written for it. This is a bug in memobrain; the other files are processed as usual.`);
             failed++;
         }
     }
+    for (const w of prefixCollisions(cmd, done))
+        err(w);
     if (failed) {
         err(`memobrain ${cmd}: ${files.length - failed} of ${files.length} files done; ${failed} failed, as reported above.`);
         return 1;

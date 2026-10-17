@@ -269,7 +269,8 @@ export interface ToolCall {
   toolUseResult?: any;
   isError: boolean;
   /** Large outputs spill to <session>/tool-results/<id>.txt and are NOT in the
-   *  JSONL. When the content looks truncated this is where the rest lives. */
+   *  JSONL. When the content looks truncated this is where the rest lives.
+   *  Empty when the call's id is not a string. */
   spillFileHint: string;
 }
 
@@ -339,6 +340,9 @@ export interface TranscriptStats {
   replayedCopies: number;
   /** ...of which the bytes differ from the first copy (promptId, toolUseResult, slug, parentUuid). */
   replayedDiffering: number;
+  /** Assistant records with neither a requestId nor a string message.id: which records form one response was read
+   *  from their parent links (see buildRequests). 0 in every transcript Claude Code has been seen to write. */
+  requestKeyGuessed: number;
 }
 
 // ---- 5. Small helpers ------------------------------------------------------
@@ -416,9 +420,14 @@ function leadText(r: any): string {
   return s.trimStart();
 }
 
-const bump = (m: Record<string, number>, k: string | undefined | null) => {
+/** A census key, a type or an id that is not a string (crafted input only) is never turned into one: an array of
+ *  millions of numbers would pass JavaScript's limit on a string's length and stop the file. Such a key is counted
+ *  under this name instead. */
+export const NOT_A_STRING = '(not a string)';
+const bump = (m: Record<string, number>, k: unknown) => {
   if (k === undefined || k === null) return;
-  m[k] = (m[k] || 0) + 1;
+  const key = typeof k === 'string' ? k : NOT_A_STRING;
+  m[key] = (m[key] || 0) + 1;
 };
 
 // ---- 6. The line parser ----------------------------------------------------
@@ -601,19 +610,34 @@ export function replayMask(records: CCRecord[]): boolean[] {
   });
 }
 
-function buildRequests(records: CCRecord[], replay: boolean[]): ApiRequest[] {
+function buildRequests(records: CCRecord[], replay: boolean[]): { requests: ApiRequest[]; guessed: number } {
   const byId = new Map<string, ApiRequest>();
   const order: string[] = [];
   // Usage repeats across the records of one request; charge each message.id once.
   const chargedMessageIds = new Set<string>();
+  const guessedKey = new Map<Uuid, string>();
+  let guessed = 0;
 
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
     if (r.type !== 'assistant' || replay[i]) continue;   // a replayed block is not a second block
     const a = r as AssistantRecord;
-    // Without requestId (older versions) the records of one response share message.id; with neither, a record is
-    // a group of its own rather than being merged into one bucket keyed on undefined.
-    const key = a.requestId ?? (typeof a.message?.id === 'string' && a.message.id ? `msg:${a.message.id}` : `uuid:${a.uuid}`);
+    // Without requestId (older versions) the records of one response share message.id. With neither as a string
+    // (crafted input only), a record joins the group of the assistant record it hangs off when that one had neither
+    // too, since the records of one response are written as a chain; otherwise it is a group of its own, never one
+    // bucket for all of them. A parallel call whose record is off the live path is found through its group, so
+    // without this it would drop out of its turn. Such records are counted (stats.requestKeyGuessed): the grouping
+    // was read from parent links, and a reader is told so.
+    const rid = a.requestId, msgId = a.message?.id;
+    let key: string;
+    if (typeof rid === 'string' && rid) key = rid;
+    else if (typeof msgId === 'string' && msgId) key = `msg:${msgId}`;
+    else {
+      guessed++;
+      const up = typeof a.parentUuid === 'string' ? guessedKey.get(a.parentUuid) : undefined;
+      key = up ?? (typeof a.uuid === 'string' ? `uuid:${a.uuid}` : `line:${i}`);
+      if (typeof a.uuid === 'string') guessedKey.set(a.uuid, key);
+    }
     let g = byId.get(key);
     if (!g) {
       g = {
@@ -642,7 +666,7 @@ function buildRequests(records: CCRecord[], replay: boolean[]): ApiRequest[] {
     if (haveIdx) g.records.sort((a, b) => (a.apiBlockIndex! - b.apiBlockIndex!));
     g.blocks = g.records.flatMap((r) => blocksOf(r.message));
   }
-  return order.map((k) => byId.get(k)!);
+  return { requests: order.map((k) => byId.get(k)!), guessed };
 }
 
 // ---- 9. Tool calls: trap 4 -------------------------------------------------
@@ -683,7 +707,7 @@ function buildToolCalls(nodes: Map<Uuid, TreeNode>, records: CCRecord[], replay:
         id: t.id, name: t.name, input: t.input, caller: t.caller,
         wireInput: wire, wireDiffers: wire !== undefined && differs(wire, t.input),
         callNode: n, isError: false,
-        spillFileHint: `<session>/tool-results/${t.id}.txt`,
+        spillFileHint: typeof t.id === 'string' ? `<session>/tool-results/${t.id}.txt` : '',
       });
     }
   }
@@ -712,7 +736,7 @@ export function parseTranscript(text: string, opts: ParseOptions = {}): Transcri
   const { records, positions, problems, lines } = parseLines(text, opts);
   const { nodes, roots, orphans, sidecars } = buildForest(records);
   const replay = replayMask(records);
-  const requests = buildRequests(records, replay);
+  const { requests, guessed } = buildRequests(records, replay);
   const toolCalls = buildToolCalls(nodes, records, replay);
 
   const stats: TranscriptStats = {
@@ -722,7 +746,7 @@ export function parseTranscript(text: string, opts: ParseOptions = {}): Transcri
     branchPoints: 0, inputTurns: 0, toolResultRecords: 0,
     firstTimestamp: null, lastTimestamp: null,
     totalContextLoad: 0, totalOutputTokens: 0,
-    replayedCopies: 0, replayedDiffering: 0,
+    replayedCopies: 0, replayedDiffering: 0, requestKeyGuessed: guessed,
   };
 
   const sids = new Set<string>(); const aids = new Set<string>(); const sc = new Set<boolean>();
@@ -884,20 +908,40 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
     const lp = (n.record as any).logicalParentUuid;
     return n.parentUuid === null && typeof lp === 'string' ? t.nodes.get(lp) : undefined;
   };
-  while (path.length && path[0].parent === null && (path[0].parentUuid || logicalOf(path[0]))) {
-    const head = path[0];
+  // The path grows at its START, one segment per join, and a crafted file can hold tens of thousands of joins:
+  // rebuilding the set of the path's uuids and the array itself on every join made the loop quadratic (a minute at
+  // 30,000 boundaries). So the segments are collected and put in front once, at the end; `inPath` grows with them;
+  // and the nearest earlier node not on the path is found through `skip`, which jumps over runs of positions
+  // already on it (skip[p] === p: the node at file position p is not on the path; otherwise a position below p).
+  const segments: TreeNode[][] = [];
+  let first: TreeNode | undefined = path[0];
+  const inPath = new Set<Uuid>();
+  const skip = new Int32Array(byIndex.length);
+  for (let i = 0; i < skip.length; i++) skip[i] = i;
+  const add = (seg: TreeNode[]) => {
+    for (const n of seg) { inPath.add(n.uuid); const p = pos.get(n.uuid); if (p !== undefined && skip[p] === p) skip[p] = p - 1; }
+  };
+  const freeAtOrBelow = (p: number): number => {
+    let r = p;
+    while (r >= 0 && skip[r] !== r) r = skip[r];
+    for (let x = p; x > r;) { const nx = skip[x]; skip[x] = r; x = nx; }   // later searches jump straight to r
+    return r;
+  };
+  const prepend = (seg: TreeNode[]) => { segments.push(seg); add(seg); first = seg[0] ?? first; };
+  add(path);
+  while (first && first.parent === null && (first.parentUuid || logicalOf(first))) {
+    const head: TreeNode = first;
     if (guard.has(head.uuid)) break;
     guard.add(head.uuid);
-    const inPath = new Set(path.map((n) => n.uuid));
     const logical = logicalOf(head);
     if (logical) {
       const m = (head.record as any).compactMetadata ?? {};
       const join = (to: TreeNode, via: CompactionJoin['via']) => {
-        compactions.unshift({
+        compactions.push({
           boundary: head, logicalParent: logical, kind: 'compaction', via, joinedAt: to,
           trigger: m.trigger ?? null, preTokens: m.preTokens ?? null, postTokens: m.postTokens ?? null, durationMs: m.durationMs ?? null,
         });
-        path = [...pathTo(t, to.uuid), ...path];
+        prepend(pathTo(t, to.uuid));
       };
       // SHAPE 1 (seen from the VS Code extension and from headless -p): the logical parent was
       //   written BEFORE the boundary. In a PARTIAL compaction (from the rewind menu) the logical
@@ -927,11 +971,18 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
       break;                                        // neither shape: leave the path as it is, never loop
     }
     const orphan = head;
-    let via: TreeNode | undefined;
-    for (let i = (pos.get(orphan.uuid) ?? 0) - 1; i >= 0; i--) if (!inPath.has(byIndex[i].uuid)) { via = byIndex[i]; break; }
-    if (!via) break;
+    const at = freeAtOrBelow((pos.get(orphan.uuid) ?? 0) - 1);
+    if (at < 0) break;
+    const via = byIndex[at];
     bridges.push({ orphan, via, missingParent: orphan.parentUuid!, kind: 'file-order' });
-    path = [...pathTo(t, via.uuid), ...path];
+    prepend(pathTo(t, via.uuid));
+  }
+  compactions.reverse();                            // the earliest join first, as the path reads
+  if (segments.length) {
+    const joined: TreeNode[] = [];
+    for (let k = segments.length - 1; k >= 0; k--) for (const n of segments[k]) joined.push(n);
+    for (const n of path) joined.push(n);
+    path = joined;
   }
 
   // (1) splices: walk the path; at P -> E, insert the branch E was written after. Keyed on the
@@ -939,7 +990,8 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
   //    late record (a Stop hook blocked stopping, the model worked on, and the summary was written
   //    at the real end) and occasionally with a user record. A genuine rewind fails the test by
   //    construction: the new prompt is LATER than everything it abandons, so nothing "runs past" it.
-  const ts = (n: TreeNode) => String((n.record as any).timestamp ?? '');
+  // a timestamp that is not a string is read as absent, as a missing one is: it is never turned into a string
+  const ts = (n: TreeNode) => { const v = (n.record as any).timestamp; return typeof v === 'string' ? v : ''; };
   const out: TreeNode[] = [];
   for (let i = 0; i < path.length; i++) {
     const E = path[i];
@@ -963,7 +1015,8 @@ export function repairedLivePath(t: Transcript): { path: TreeNode[]; from: 'leaf
     const runsPast = branch.some((x) => ts(x) > ts(E));
     if (!branch.length || !written || !runsPast) continue;
     for (const x of branch) out.push(x);
-    splices.push({ error: E, fork: P, branch, kind: 'late-write', lateType: r.type + (r.subtype ? ':' + r.subtype : '') });
+    splices.push({ error: E, fork: P, branch, kind: 'late-write',
+      lateType: (typeof r.type === 'string' ? r.type : NOT_A_STRING) + (typeof r.subtype === 'string' && r.subtype ? ':' + r.subtype : '') });
   }
   return { path: out, from: base.from, bridges, splices, extension, compactions };
 }

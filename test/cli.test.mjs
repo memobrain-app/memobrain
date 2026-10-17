@@ -14,7 +14,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { chmodSync, closeSync, ftruncateSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, closeSync, ftruncateSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync, writeSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -983,4 +983,284 @@ test('README and --help name every value the output can hold, and claim nothing 
     assert.match(text, /plain `?hook-block`?,? when two or more words do|when two or more words end in a script extension[^.]*plain `?hook-block/, `${where} does not say a hook name needs exactly one script word`);
   }
   assert.doesNotMatch(pkg.description, /every turn and tool call as an address and a hash/i, 'package.json still says every turn has a hash');
+});
+
+// ---- 0.0.3: the sixth review's findings, and the notes of the fourth and fifth ----------------
+
+/** One prompt, then a call per bracket, each blocked by a hook with that bracket. */
+function hookFile(dir, cases) {
+  const lines = [{ parentUuid: null, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' }, uuid: uuidOf(1) }];
+  cases.forEach(([bracket], k) => {
+    const text = `PreToolUse:Bash hook error: ${bracket}: invented reason`;
+    lines.push({ parentUuid: uuidOf(2 * k + 1), ...sessionEnv, type: 'assistant', requestId: `q${k}`, message: { role: 'assistant', content: [{ type: 'tool_use', id: `t${k}`, name: 'Bash', input: { command: 'make' } }] }, uuid: uuidOf(2 * k + 2) });
+    lines.push({ parentUuid: uuidOf(2 * k + 2), ...sessionEnv, type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: `t${k}`, content: text, is_error: true }] }, toolUseResult: `Error: ${text}`, uuid: uuidOf(2 * k + 3) });
+  });
+  const f = join(dir, 'hooks.jsonl');
+  writeFileSync(f, lines.map((o) => JSON.stringify(o)).join('\n') + '\n');
+  return f;
+}
+
+test('a script word in quotes or before punctuation still counts, so a quoted hook and its argument give a plain hook-block (review 6, D6-2)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  try {
+    const cases = [['[bash "/h/b.sh" /h/a.sh]'], ["[bash '/h/b.sh' /h/a.sh]"], ['[/h/b.sh; /h/a.sh]'], ['[/h/b.sh) /h/a.sh]'], ['[/h/b.sh| /h/a.sh]'], ["[/h/b.sh' /h/a.sh]"], ['[bash `/h/b.sh` /h/a.sh]']];
+    assert.deepEqual(parsed(run('skeleton', hookFile(dir, cases)).out).filter((o) => o.k === 'call').map((o) => o.ek), cases.map(() => 'hook-block'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a hook is named only from the command itself or the word right after an interpreter; an argument is never named (review 4, P4-5)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  try {
+    const cases = [
+      ['[/h/bin/guard /data/ZQH07.py]', 'hook-block'],                    // the command has no extension; the one script word is its argument
+      ['[FOO=/x/ZQH08.sh /h/bin/guard]', 'hook-block'],                   // an assignment's value
+      ['[python3 -X importtime=/x/ZQH09.py -m guard]', 'hook-block'],     // an option's value
+      ["[bash -c 'exec /h/guard.sh' ZQH10.sh]", 'hook-block'],            // bash -c: the script word after it is an argument
+      ['[C:\\h\\guard.ps1 C:\\data\\ZQH11.py]', 'hook-block'],            // .ps1 is not a script extension here
+      ['[env A=/x/ZQH12.sh /h/bin/guard]', 'hook-block'],                // after env, the script word is an assignment's value
+      ['[env -i X=1 /h/bin/guard /h/ZQH13.sh]', 'hook-block'],           // after env and an assignment, an argument
+      ['[/usr/bin/env bash /h/env2-gate.sh]', 'hook-block:env2-gate'],   // env runs bash, bash runs the script
+      ['[env A=1 B=2 python3 /h/limb-gate.py]', 'hook-block:limb-gate'], // the other shape measured (2 of 966)
+      ['[X=1 bash /h/assign-gate.sh]', 'hook-block:assign-gate'],
+      ['[bash /h/hooks/sh-gate.sh]', 'hook-block:sh-gate'],              // the one shape in the transcripts measured (601 of 601)
+      ['[/h/hooks/plain-gate.sh --strict]', 'hook-block:plain-gate'],     // the command itself
+      ['["$CLAUDE_PROJECT_DIR"/.claude/hooks/env-gate.sh]', 'hook-block:env-gate'],
+      ['[python3 /h/py-gate.py]', 'hook-block:py-gate'],
+      ['[node /h/js-gate.mjs]', 'hook-block:js-gate'],
+      ['[/usr/bin/python3 /h/abs-gate.py]', 'hook-block:abs-gate'],     // an interpreter named by its path
+      ["[sh '/h/quoted-gate.sh']", 'hook-block:quoted-gate'],             // quotes around the script are not part of its name
+    ];
+    assert.deepEqual(parsed(run('skeleton', hookFile(dir, cases)).out).filter((o) => o.k === 'call').map((o) => o.ek), cases.map(([, ek]) => ek));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('README and --help: a hook name that does not qualify gives a plain hook-block, not (withheld); the hook rule names its two positions', () => {
+  for (const [where, text] of [['README', README_TEXT()], ['--help', run('--help').out]].map(([w, t]) => [w, t.replace(/\s+/g, ' ')])) {
+    assert.match(text, /a hook name that does not qualify gives a plain `?hook-block`?/i, `${where}: the label paragraph does not say what a hook name that fails gives`);
+    assert.match(text, /right after an interpreter/i, `${where}: the hook rule does not name the interpreter position`);
+  }
+});
+
+test('the library: a census key, a tool id, a record uuid, a timestamp or a type that is not a string is never written out (review 6, D6-1)', async () => {
+  const { parseTranscript, repairedLivePath } = await import(new URL(`file://${join(dirname(CLI), 'parser.js')}`).href);
+  const NS = '(not a string)';
+  const recs = [
+    { type: [1, 2] },
+    { type: 'x', version: [3, 4] },
+    { type: 'system', subtype: [5, 6] },
+    { type: 'attachment', attachment: { type: [7, 8] } },
+    { type: 'user', message: { role: 'user', content: [{ type: [9, 10] }] } },
+    { parentUuid: null, ...sessionEnv, uuid: uuidOf(1), type: 'assistant', requestId: 'q9', message: { id: 'm9', role: 'assistant', content: [{ type: 'tool_use', id: [11, 12], name: [13, 14], input: {} }] } },
+    { type: 'assistant', uuid: [15, 16], message: { role: 'assistant', content: [] } },
+  ];
+  const t = parseTranscript(recs.map((o) => JSON.stringify(o)).join('\n') + '\n');
+  for (const k of ['byType', 'versions', 'bySystemSubtype', 'byAttachmentType', 'byBlockType', 'byToolName'])
+    assert.equal(t.stats[k][NS], 1, `stats.${k} does not count the value that is not a string under ${NS}: ${JSON.stringify(t.stats[k])}`);
+  const written = JSON.stringify({ stats: t.stats, hints: t.toolCalls.map((c) => c.spillFileHint), keys: t.requests.map((r) => r.requestId) });
+  for (const s of ['1,2', '3,4', '5,6', '7,8', '9,10', '11,12', '13,14', '15,16']) assert.ok(!written.includes(s), `the array ${s} was written out as a string`);
+  // a late-written record whose type, subtype and timestamp are not strings: the splice still reads, and its label
+  // says so; a timestamp that is not a string reads as absent, as a missing one does
+  const late = [
+    { parentUuid: null, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' }, uuid: uuidOf(1), timestamp: '2026-08-01T10:00:00.000Z' },
+    { parentUuid: uuidOf(1), ...sessionEnv, type: 'assistant', requestId: 'q1', message: { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'git status' } }] }, uuid: uuidOf(2), timestamp: '2026-08-01T10:00:02.000Z' },
+    { parentUuid: uuidOf(2), ...sessionEnv, type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }] }, toolUseResult: {}, uuid: uuidOf(3), timestamp: '2026-08-01T10:00:03.000Z' },
+    { parentUuid: uuidOf(1), ...sessionEnv, type: [17], subtype: [18], uuid: uuidOf(4), timestamp: '2026-08-01T10:00:01.000Z' },
+    { parentUuid: uuidOf(1), ...sessionEnv, type: 'system', subtype: 'x', uuid: uuidOf(5), timestamp: [9] },   // as a string, '9' sorts after every 2026 date
+    { type: 'last-prompt', leafUuid: uuidOf(4), sessionId: 's' },
+  ];
+  const lt = parseTranscript(late.slice(0, 4).concat(late[5]).map((o) => JSON.stringify(o)).join('\n') + '\n');
+  assert.deepEqual(repairedLivePath(lt).splices.map((s) => s.lateType), [NS]);
+  // a record whose timestamp is an array, written after the branch: read as a record with no timestamp, so it is spliced
+  const lt2 = parseTranscript([late[0], late[1], late[2], late[4], { type: 'last-prompt', leafUuid: uuidOf(5), sessionId: 's' }].map((o) => JSON.stringify(o)).join('\n') + '\n');
+  assert.deepEqual(repairedLivePath(lt2).splices.map((s) => s.branch.map((n) => n.uuid)), [[uuidOf(2), uuidOf(3)]]);
+});
+
+test('every value that once stopped a file through the parser is read past: eight routes and the late record\'s type (review 6, D6-1)',
+  { skip: !process.env.MEMOBRAIN_HEAVY && 'set MEMOBRAIN_HEAVY=1 to run: it writes nine files of about 125 MB, one at a time, and needs about 3 GB of memory' }, () => {
+    const dir = mkdtempSync(join(tmpdir(), 'memobrain-heavy-'));
+    try {
+      const count = Math.ceil(constants.MAX_STRING_LENGTH / 22) + 1000;
+      const J = (o) => JSON.stringify(o);
+      const T = (s) => `2026-08-01T10:00:0${s}.000Z`;
+      const prompt = J({ parentUuid: null, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' }, uuid: uuidOf(1), timestamp: T(0) });
+      const call = J({ parentUuid: uuidOf(1), ...sessionEnv, type: 'assistant', requestId: 'q1', message: { id: 'm1', role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'git status' } }] }, uuid: uuidOf(2), timestamp: T(2) });
+      const result = J({ parentUuid: uuidOf(2), ...sessionEnv, type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }] }, toolUseResult: {}, uuid: uuidOf(3), timestamp: T(3) });
+      const leaf = (u) => J({ type: 'last-prompt', leafUuid: u, sessionId: 's' });
+      // [text before the array, text after it, the lines around it, the calls expected]
+      const shapes = {
+        'type-array': ['{"type":', '}', 'after', 1],
+        'version-array': ['{"type":"x","version":', '}', 'after', 1],
+        'subtype-array': ['{"type":"system","subtype":', '}', 'after', 1],
+        'block-type': ['{"type":"user","message":{"role":"user","content":[{"type":', '}]}}', 'after', 1],
+        'tool-name': ['{"type":"assistant","requestId":"q9","message":{"id":"m9","role":"assistant","content":[{"type":"tool_use","id":"t9","name":', '}]}}', 'after', 1],
+        'request-key': ['{"type":"assistant","uuid":', ',"message":{"role":"assistant","content":[]}}', 'after', 1],
+        'tool-id': [`{"parentUuid":"${uuidOf(3)}","sessionId":"s","type":"assistant","uuid":"${uuidOf(4)}","requestId":"q4","message":{"id":"m4","role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"make"},"id":`, '}]}}', 'after', 2],
+        'fork-timestamp': [`{"parentUuid":"${uuidOf(1)}","sessionId":"s","type":"system","subtype":"x","uuid":"${uuidOf(5)}","timestamp":`, '}', 'between', 1],
+        'late-type': [`{"parentUuid":"${uuidOf(1)}","sessionId":"s","uuid":"${uuidOf(6)}","timestamp":"${T(1)}","type":`, '}', 'late', 1],
+      };
+      for (const [name, [pre, post, where, calls]] of Object.entries(shapes)) {
+        const f = join(dir, `${name}.jsonl`);
+        const fd = openSync(f, 'w');
+        const big = () => {
+          writeSync(fd, pre + '[');
+          const chunk = '1e20,'.repeat(1 << 20);
+          for (let left = count - 1; left > 0; left -= 1 << 20) writeSync(fd, left >= 1 << 20 ? chunk : '1e20,'.repeat(left));
+          writeSync(fd, '1e20]' + post + '\n');
+        };
+        if (where === 'after') { writeSync(fd, [prompt, call, result].join('\n') + '\n'); big(); writeSync(fd, leaf(uuidOf(3)) + '\n'); }
+        else if (where === 'between') { writeSync(fd, prompt + '\n'); big(); writeSync(fd, [call, result, leaf(uuidOf(3))].join('\n') + '\n'); }
+        else { writeSync(fd, [prompt, call, result].join('\n') + '\n'); big(); writeSync(fd, leaf(uuidOf(6)) + '\n'); }   // the late record ends the live path
+        closeSync(fd);
+        for (const cmd of ['skeleton', 'stats']) {
+          const q = spawnSync(process.execPath, ['--max-old-space-size=3072', CLI, cmd, f], { encoding: 'utf8', timeout: 300000, maxBuffer: 1 << 24 });
+          assert.equal(q.status, 0, `${name} ${cmd}: ${q.stderr}`);
+          assert.doesNotMatch(q.stderr, /internal error/, `${name} ${cmd}`);
+          if (cmd === 'skeleton') assert.equal(parsed(q.stdout).filter((o) => o.k === 'call').length, calls, `${name}: the calls are still read`);
+        }
+        rmSync(f);
+      }
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+test('thousands of compaction boundaries, or of orphans bridged in file order, are joined in linear time (review 6, L6-1)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  try {
+    const N = 20000;
+    const boundaries = [];
+    for (let i = 0; i < N; i++) {
+      boundaries.push(JSON.stringify({ uuid: `b${i}`, parentUuid: null, ...sessionEnv, type: 'system', subtype: 'compact_boundary', compactMetadata: { trigger: 'manual', preTokens: 1 }, ...(i ? { logicalParentUuid: `s${i - 1}` } : {}) }));
+      boundaries.push(JSON.stringify({ uuid: `s${i}`, parentUuid: `b${i}`, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' } }));
+    }
+    boundaries.push(JSON.stringify({ type: 'last-prompt', leafUuid: `s${N - 1}`, sessionId: 's' }));
+    writeFileSync(join(dir, 'boundaries.jsonl'), boundaries.join('\n') + '\n');
+    const orphans = [];
+    for (let i = 0; i < N; i++) orphans.push(JSON.stringify({ uuid: uuidOf(i + 1), parentUuid: `missing-${i}`, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' } }));
+    orphans.push(JSON.stringify({ type: 'last-prompt', leafUuid: uuidOf(N), sessionId: 's' }));
+    writeFileSync(join(dir, 'orphans.jsonl'), orphans.join('\n') + '\n');
+    for (const f of ['boundaries.jsonl', 'orphans.jsonl']) {
+      const t0 = Date.now();
+      const r = run('stats', join(dir, f));
+      const ms = Date.now() - t0;
+      assert.equal(r.code, 0, `${f}: ${r.err}`);
+      assert.equal(parsed(r.out)[0].turns, N, `${f}: every segment is joined`);
+      assert.ok(ms < 8000, `${f}: ${ms} ms for ${N} joins`);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('an internal error is reported by its kind and place only: no part of its message reaches stderr (review 6, P6-5)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  try {
+    // a stand-in for a future bug whose message quotes the transcript: preloaded, it throws from inside the parser
+    const hook = join(dir, 'throw.mjs');
+    writeFileSync(hook, "const orig = String.prototype.trimStart;\nString.prototype.trimStart = function () { if (this.includes('ZQXCRASH')) throw new TypeError('quoted ' + this); return orig.call(this); };\n");
+    const f = join(dir, 'crash.jsonl');
+    writeFileSync(f, JSON.stringify({ parentUuid: null, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'ZQXCRASH a secret' }, uuid: uuidOf(1) }) + '\n');
+    const r = spawnSync(process.execPath, ['--import', new URL(`file://${hook}`).href, CLI, 'stats', f, DEMO], { encoding: 'utf8', timeout: 20000 });
+    assert.equal(r.status, 1, r.stderr);
+    assert.match(r.stderr, /internal error \(TypeError/);
+    assert.doesNotMatch(r.stderr, /ZQX|secret|quoted/);
+    assert.equal(nonEmpty(r.stdout).length, 1, 'the other file is processed');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('files that get the same address prefix in one run: a warning names them; distinct prefixes and a file given twice do not (review 6, P6-6; review 5, N5-4)', () => {
+  const same = run('stats', fixture('parallel.jsonl'), fixture('parallel-fail.jsonl'), fixture('parallel-msgid.jsonl'));
+  assert.equal(same.code, 0);
+  const w = nonEmpty(same.err).filter((l) => /share the address prefix/.test(l));
+  assert.equal(w.length, 1, same.err);
+  assert.match(w[0], /'parallel'/);
+  for (const n of ['parallel.jsonl', 'parallel-fail.jsonl', 'parallel-msgid.jsonl']) assert.ok(w[0].includes(n), `${n} is not named: ${w[0]}`);
+  assert.doesNotMatch(run('stats', DEMO, VARIETY).err, /share the address prefix/);
+  assert.doesNotMatch(run('stats', DEMO, DEMO).err, /share the address prefix/);
+});
+
+test('--version and -v after a command print the version, as --help does there (review 5, N5-8)', () => {
+  const v = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
+  for (const args of [['skeleton', '--version'], ['stats', '-v'], ['stats', DEMO, '--version']]) {
+    const r = run(...args);
+    assert.equal(r.code, 0, `${args.join(' ')}: ${r.err}`);
+    assert.equal(r.out, v + '\n');
+  }
+  assert.equal(run('stats', '--', '--version').code, 1, 'after --, --version is a file name');
+});
+
+test('records of one response with no requestId and no string message.id are grouped by their parent links, with a warning (review 4, O9)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  try {
+    const base = readFileSync(fixture('parallel-msgid.jsonl'), 'utf8');
+    for (const [name, id1, id2] of [['numbers', '123', '456'], ['objects', '{"toString":1,"valueOf":2}', '{"toString":3}']]) {
+      const f = join(dir, `${name}.jsonl`);
+      writeFileSync(f, base.replaceAll('"msg_pmsg_01"', id1).replaceAll('"msg_pmsg_02"', id2));
+      const r = run('stats', f);
+      assert.equal(r.code, 0, r.err);
+      assert.equal(parsed(r.out)[0].calls, 2, `${name}: the parallel sibling is kept`);
+      assert.match(r.err, /3 assistant records carry neither a requestId nor a string message\.id/, `${name}: ${r.err}`);
+    }
+    assert.doesNotMatch(run('stats', fixture('parallel-msgid.jsonl')).err, /requestId/, 'string ids: no warning');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the linear join keeps what the quadratic one did: a bridge passes over nodes already on the path, and joins are listed earliest first (review 6, L6-1)', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  try {
+    // a record written before its own parent, which is an orphan: the node just before the orphan in the file is
+    // already on the path, so the bridge must pass over it to the one before
+    const lines = [
+      { parentUuid: null, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'one' }, uuid: uuidOf(1) },
+      { parentUuid: uuidOf(3), ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'three' }, uuid: uuidOf(2) },
+      { parentUuid: 'missing', ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'two' }, uuid: uuidOf(3) },
+      { type: 'last-prompt', leafUuid: uuidOf(2), sessionId: 's' },
+    ];
+    writeFileSync(join(dir, 'early-child.jsonl'), lines.map((o) => JSON.stringify(o)).join('\n') + '\n');
+    assert.deepEqual(parsed(run('skeleton', join(dir, 'early-child.jsonl')).out).map((o) => o.a), ['early-ch:L1', 'early-ch:L3', 'early-ch:L2']);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+  const { parseTranscript, repairedLivePath } = await import(new URL(`file://${join(dirname(CLI), 'parser.js')}`).href);
+  const recs = [];
+  for (let i = 0; i < 3; i++) {
+    recs.push({ uuid: `b${i}`, parentUuid: null, ...sessionEnv, type: 'system', subtype: 'compact_boundary', compactMetadata: { trigger: 'manual', preTokens: i }, ...(i ? { logicalParentUuid: `s${i - 1}` } : {}) });
+    recs.push({ uuid: `s${i}`, parentUuid: `b${i}`, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' } });
+  }
+  recs.push({ type: 'last-prompt', leafUuid: 's2', sessionId: 's' });
+  const r = repairedLivePath(parseTranscript(recs.map((o) => JSON.stringify(o)).join('\n') + '\n'));
+  assert.deepEqual(r.compactions.map((c) => [c.boundary.uuid, c.joinedAt.uuid, c.preTokens]), [['b1', 's0', 1], ['b2', 's1', 2]]);
+  assert.deepEqual(r.path.map((n) => n.uuid), ['b0', 's0', 'b1', 's1', 'b2', 's2']);
+});
+
+test('a boundary whose logical parent is already on the live path is not joined again: no turn is printed twice (review 6, L6-1)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  try {
+    // a record written before its own boundary, and the boundary's logicalParentUuid pointing back at it: the
+    // record is on the path already when the boundary is reached, so there is nothing to join
+    const lines = [
+      { parentUuid: uuidOf(2), ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'one' }, uuid: uuidOf(1) },
+      { parentUuid: null, ...sessionEnv, type: 'system', subtype: 'compact_boundary', logicalParentUuid: uuidOf(1), compactMetadata: { trigger: 'manual' }, uuid: uuidOf(2) },
+      { parentUuid: uuidOf(1), ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'two' }, uuid: uuidOf(3) },
+      { type: 'last-prompt', leafUuid: uuidOf(3), sessionId: 's' },
+    ];
+    writeFileSync(join(dir, 'loop-back.jsonl'), lines.map((o) => JSON.stringify(o)).join('\n') + '\n');
+    assert.deepEqual(parsed(run('skeleton', join(dir, 'loop-back.jsonl')).out).map((o) => o.a), ['loop-bac:L1', 'loop-bac:L3']);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a bad line is reported by its count and its first line number only: no part of any kind of bad line reaches stderr (review 6, P6-5)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  try {
+    const NUL = String.fromCharCode(0);
+    const good = JSON.stringify({ parentUuid: null, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' }, uuid: uuidOf(1) });
+    const bad = [
+      'ZQXBAD1 not json at all',                                   // reason json
+      '["ZQXBAD2 an array"]',                                     // reason not-object
+      `{"a":"ZQXBAD3",${'['.repeat(1100)}${']'.repeat(1100)}}`,   // reason too-deep
+      `${NUL.repeat(8)}{"ZQXBAD4":`,                              // NUL bytes before a broken record
+    ];
+    const f = join(dir, 'bad-lines.jsonl');
+    writeFileSync(f, [good, ...bad].join('\n') + '\n');
+    for (const cmd of ['skeleton', 'stats']) {
+      const r = run(cmd, f);
+      assert.equal(r.code, 0, r.err);
+      assert.match(r.err, /4 lines could not be read as a JSON object of at most 1,000 levels \(first: line 2\)/);
+      assert.doesNotMatch(r.err + r.out, /ZQX/);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

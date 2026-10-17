@@ -1,5 +1,18 @@
 # Changes
 
+## 0.0.3
+
+- Output changes, on crafted input only (on 2,539 real transcripts the output did not change, and neither did what the parser makes of them: the live path, its joins and repairs, requests, turns and counts):
+  - a hook block names its script only where a command's script stands: the command itself, or the word right after an interpreter (`bash /x/gate.sh`), after any leading `env` and `NAME=value` words. Anywhere else the one word with a script extension may be an argument, and the class is a plain `hook-block` (`/h/guard /data/notes.py` named `notes`);
+  - quotes and punctuation around a word no longer hide its script extension: a quoted hook and its argument give a plain `hook-block` (it named the argument), and a quoted hook alone is named;
+  - a value that is not a string where a string belongs (a record's type, version or timestamp, a block's type, a tool's name or id, a record's uuid) is never turned into one, so it can no longer stop the file at JavaScript's limit on a string's length (eight routes in the parser did, and so did the label of a late-written record); in the library's counts such a key is `(not a string)`;
+  - an assistant record with neither a `requestId` nor a string `message.id` joins the response of the record it hangs off, when that one had neither too, with a warning: a parallel call whose record is off the live path had dropped out of its turn;
+  - thousands of compaction boundaries, or of records bridged in file order, are joined in linear time (20,000 boundaries took 31 seconds, and now take 0.4).
+- New warnings on stderr: files in one run that share an address prefix, and records whose response was read from their parent links.
+- An internal error is reported by its kind and its place in memobrain's code, never by its message, which could quote the transcript.
+- `--version` and `-v` work after a command, as `--help` does.
+- The README says that Claude Code cuts a project folder's name at 200 characters.
+
 ## 0.0.2
 
 - The README opens with why memobrain exists: compaction replaces the model's context with a summary, and the transcript on disk keeps every record.
