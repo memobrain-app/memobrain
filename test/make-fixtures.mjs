@@ -1,6 +1,6 @@
 // Writes the generated test fixtures (each is introduced by a comment below: labels, unanswered, cycle, rare-shapes,
 // journal-launched, lexer, labels2, errors, parallel, compacted, stale-head, retried3, orphan-first, the cycle-* three,
-// content, parallel-msgid, request-two-turns, errors2, unicode, parallel-fail, types-only).
+// content, parallel-msgid, request-two-turns, errors2, unicode, parallel-fail, api-request-records, types-only).
 // Every string in them is invented; the record format follows the hand-written
 // fixtures (edges.jsonl). The output is the same on every run.
 //
@@ -17,7 +17,7 @@ function file(name, sid, pre) {
   const api = {
     raw(obj) { lines.push(JSON.stringify(obj)); },
     prompt(text, extra = {}, parent = last) { const u = uuid(++n); lines.push(JSON.stringify({ parentUuid: parent, ...env(sid), type: 'user', message: { role: 'user', content: text }, uuid: u, timestamp: ts(), promptId: `${pre}-1111-4000-8000-${String(n).padStart(12, '0')}`, ...extra })); last = u; return u; },
-    use(id, name, input, parent = last) { const u = uuid(++n); lines.push(JSON.stringify({ parentUuid: parent, ...env(sid), type: 'assistant', message: { id: `msg_${id}`, type: 'message', role: 'assistant', model: 'claude-demo-model', content: [{ type: 'tool_use', id, name, input }], stop_reason: 'tool_use', usage: { input_tokens: 10, output_tokens: 20 } }, requestId: `req_${id}`, uuid: u, timestamp: ts() })); last = u; return u; },
+    use(id, name, input, parent = last, extra = {}) { const u = uuid(++n); lines.push(JSON.stringify({ parentUuid: parent, ...env(sid), type: 'assistant', message: { id: `msg_${id}`, type: 'message', role: 'assistant', model: 'claude-demo-model', content: [{ type: 'tool_use', id, name, input }], stop_reason: 'tool_use', usage: { input_tokens: 10, output_tokens: 20 } }, requestId: `req_${id}`, uuid: u, timestamp: ts(), ...extra })); last = u; return u; },
     result(id, content, { isError = false, tur, blocks, parent = last } = {}) {
       const u = uuid(++n);
       const block = { tool_use_id: id, type: 'tool_result', content, is_error: isError };
@@ -26,7 +26,7 @@ function file(name, sid, pre) {
         sourceToolAssistantUUID: parent };
       lines.push(JSON.stringify(rec)); last = u; return u;
     },
-    text(t, parent = last) { const u = uuid(++n); lines.push(JSON.stringify({ parentUuid: parent, ...env(sid), type: 'assistant', message: { id: `msg_${pre}_${n}`, type: 'message', role: 'assistant', model: 'claude-demo-model', content: [{ type: 'text', text: t }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 } }, requestId: `req_${pre}_${n}`, uuid: u, timestamp: ts() })); last = u; return u; },
+    text(t, parent = last, extra = {}) { const u = uuid(++n); lines.push(JSON.stringify({ parentUuid: parent, ...env(sid), type: 'assistant', message: { id: `msg_${pre}_${n}`, type: 'message', role: 'assistant', model: 'claude-demo-model', content: [{ type: 'text', text: t }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 } }, requestId: `req_${pre}_${n}`, uuid: u, timestamp: ts(), ...extra })); last = u; return u; },
     replay(lineNo, newParent) { const o = JSON.parse(lines[lineNo - 1]); if (newParent !== undefined) o.parentUuid = newParent; lines.push(JSON.stringify(o)); },
     leaf(text, u = last) { lines.push(JSON.stringify({ type: 'last-prompt', lastPrompt: text, leafUuid: u, sessionId: sid })); },
     uuid, get last() { return last; }, set last(v) { last = v; },
@@ -218,6 +218,27 @@ const LEXER_CASES = [
   ['nohup command make demo', 'command'],
   ['timeout 5 exec make demo', 'exec'],
   ['command make demo', 'make'],
+  // ... but only after a wrapper that looks its next word up on PATH (nohup, env, nice, timeout, exec). After command (a
+  // builtin) or time (a keyword), command and exec are still the shell's builtins, and bash runs the word after them
+  ['command exec make demo', 'make'],
+  ['command command make demo', 'make'],
+  ['time command make demo', 'make'],
+  ['time -p command make demo', 'make'],
+  ['time exec make demo', 'make'],
+  ['X=1 command exec make demo', 'make'],
+  ['{ command exec make demo; }', 'make'],
+  ['( time command make demo )', 'make'],
+  ['! command exec make demo', 'make'],
+  ['cd /work/demo-project && time exec make demo', 'make'],
+  ['# a comment\ncommand exec make demo', 'make'],
+  ['exec command make demo', 'command'],
+  ['env exec make demo', 'exec'],
+  ['nice command make demo', 'command'],
+  ['exec exec make demo', 'exec'],
+  // a wrapper with only its options after it is the program, for nice as for env -i, timeout 5 and time -p
+  ['nice -n 5', 'nice'],
+  ['nice -19', 'nice'],
+  ['nice -n 5; make demo', 'nice'],
 ];
 {
   const f = file('lexer.jsonl', '56565656-7878-4909-8bcb-d0d0d0d0d0d0', 'd9000000');
@@ -498,6 +519,32 @@ for (const [name, pointer] of [['compacted.jsonl', true], ['compacted-nopointer.
   f.raw({ parentUuid: a1, ...e, type: 'user', message: { role: 'user', content: [{ tool_use_id: 'toolu_pfail_01', type: 'tool_result', content: 'Exit code 2\nthe invented first part failed', is_error: true }] }, uuid: r1, timestamp: '2026-08-01T11:30:04.000Z', toolUseResult: 'Error: Exit code 2', sourceToolAssistantUUID: a1 });
   f.raw({ parentUuid: r1, ...e, type: 'assistant', message: { id: 'msg_pfail_02', type: 'message', role: 'assistant', model: 'claude-demo-model', content: [{ type: 'text', text: 'One invented part failed.' }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 } }, requestId: 'req_pfail_02', uuid: t, timestamp: '2026-08-01T11:30:05.000Z' });
   f.leaf('Build both invented parts at once.', t);
+  f.write();
+}
+
+// api-request-records.jsonl: the records Claude Code 2.1.300 began to write beside the conversation (api-request,
+// api-request-blob, api-request-shape: the API requests themselves, the system prompt among them) and the requestRef
+// on assistant records. They carry no uuid, so they are side records: passed over, and nothing in them reaches the
+// output (each holds a ZQX marker).
+{
+  const sid = '2a2a2a2a-3b3b-4c4c-8d8d-5e5e5e5e5e5e';
+  const f = file('api-request-records.jsonl', sid, 'da000000');
+  const req = (k) => `da000000-2222-4000-8000-${String(k).padStart(12, '0')}`;
+  const hex = (c) => c.repeat(64);
+  const blob = (h, text) => f.raw({ type: 'api-request-blob', sessionId: sid, hash: hex(h), message: { role: 'user', content: [{ type: 'text', text }] } });
+  const request = (k, tail) => f.raw({ type: 'api-request', sessionId: sid, id: req(k), timestamp: `2026-08-01T10:00:0${k}.500Z`, version: '2.1.300', querySource: 'sdk',
+    shapeHash: hex('a'), params: { model: 'claude-demo-model', max_tokens: 1000, thinking: { type: 'disabled' } }, keep: 0, tail, cacheControl: [{ type: 'ephemeral' }], requestDigest: hex('d') });
+  f.prompt('Run the invented demo tests once.', { promptSource: 'typed' });
+  f.raw({ type: 'api-request-shape', sessionId: sid, shapeHash: hex('a'), timestamp: '2026-08-01T10:00:01.000Z', version: '2.1.300',
+    shape: { system: [{ type: 'text', text: 'ZQXR01 invented system prompt block' }], tools: [{ name: 'Bash', description: 'ZQXR02 invented tool description' }] } });
+  blob('b', 'ZQXR03 invented request message');
+  request(1, [hex('b')]);
+  f.use('toolu_reqrec_01', 'Bash', { command: 'npm test' }, undefined, { requestRef: req(1) });
+  f.result('toolu_reqrec_01', 'invented test output: 3 passed');
+  blob('c', 'ZQXR04 invented tool result, as the next request carries it');
+  request(2, [hex('b'), hex('c')]);
+  f.text('The invented tests passed.', undefined, { requestRef: req(2) });
+  f.leaf('Run the invented demo tests once.');
   f.write();
 }
 

@@ -460,15 +460,14 @@ export function parseLines(text: string, opts: ParseOptions = {}): { records: CC
     const hasNul = raw.indexOf('\u0000') !== -1;
     // A crafted line can stop the whole file in code far from here: an object whose toString is not a function makes
     // every String() of it throw, and an array nested thousands deep makes join and stringify overflow the stack. So
-    // an object holding a "toString" or "valueOf" key gets a hidden string conversion (a symbol, which JSON.stringify
-    // ignores: its hash is unchanged), and a line nested deeper than MAX_DEPTH is skipped as a problem, like a line
-    // that is not JSON.
-    if (raw.length > 2 * MAX_DEPTH && depthOf(raw) > MAX_DEPTH) {
+    // every object holding a toString or valueOf key gets a hidden string conversion (guardConversions), and a line
+    // nested deeper than MAX_DEPTH is skipped as a problem, like a line that is not JSON.
+    const tooDeep = (s: string) => s.length > 2 * MAX_DEPTH && depthOf(s) > MAX_DEPTH;
+    if (tooDeep(raw)) {
       problems.push({ line: i + 1, offset: lineStart, bytes: len, reason: 'too-deep', message: `nested deeper than ${MAX_DEPTH} levels`, hasNul, sample: JSON.stringify(raw.slice(0, 120)) });
       continue;
     }
-    const reviver = raw.includes('"toString"') || raw.includes('"valueOf"') ? convertible : undefined;
-    const attempt = (s: string) => { try { return { ok: true as const, v: JSON.parse(s, reviver) }; } catch (e: any) { return { ok: false as const, e }; } };
+    const attempt = (s: string) => { try { return { ok: true as const, v: guardConversions(s, JSON.parse(s)) }; } catch (e: any) { return { ok: false as const, e }; } };
 
     let r = attempt(raw);
     let repaired = false;
@@ -476,6 +475,12 @@ export function parseLines(text: string, opts: ParseOptions = {}): { records: CC
       const stripped = raw.replace(/\u0000+/g, '');
       if (stripped.trim() === '') {
         problems.push({ line: i + 1, offset: lineStart, bytes: len, reason: 'empty-after-strip', message: 'line was NUL padding only', sample: '', hasNul: true });
+        continue;
+      }
+      // the depth is checked again: a NUL between a backslash and a quote moves where a string ends, so the stripped
+      // text can nest deeper than the raw text did
+      if (tooDeep(stripped)) {
+        problems.push({ line: i + 1, offset: lineStart, bytes: len, reason: 'too-deep', message: `nested deeper than ${MAX_DEPTH} levels once its NUL bytes are stripped`, hasNul: true, sample: JSON.stringify(raw.slice(0, 120)) });
         continue;
       }
       const r2 = attempt(stripped);
@@ -504,11 +509,24 @@ export function parseLines(text: string, opts: ParseOptions = {}): { records: CC
 }
 
 const MAX_DEPTH = 1000;
-const convertible = (_k: string, v: unknown) => {
-  if (v && typeof v === 'object' && (Object.hasOwn(v, 'toString') || Object.hasOwn(v, 'valueOf')))
-    Object.defineProperty(v, Symbol.toPrimitive, { value: () => '[object Object]' });
-  return v;
-};
+/** A backslash and a u: how an escaped character begins in JSON text. Built, not typed. */
+const ESCAPE_U = String.fromCharCode(92) + 'u';
+/** Every object in a parsed line that holds its own toString or valueOf key gets a hidden string conversion (a symbol,
+ *  which JSON.stringify ignores: the hash is unchanged), so no String() or template literal of it can throw. JSON.parse
+ *  makes such a key from its plain text or from escaped characters, so the walk runs when the text holds either; it
+ *  visits objects and arrays only, never the characters of a string, which keeps it cheap on a long line. */
+function guardConversions(text: string, value: unknown): unknown {
+  if (!text.includes('"toString"') && !text.includes('"valueOf"') && !text.includes(ESCAPE_U)) return value;
+  const pending: unknown[] = [value];
+  while (pending.length) {
+    const v = pending.pop();
+    if (typeof v !== 'object' || v === null) continue;
+    if (!Array.isArray(v) && (Object.hasOwn(v, 'toString') || Object.hasOwn(v, 'valueOf')))
+      Object.defineProperty(v, Symbol.toPrimitive, { value: () => '[object Object]' });
+    for (const child of Object.values(v)) if (typeof child === 'object' && child !== null) pending.push(child);
+  }
+  return value;
+}
 /** The deepest nesting of [ and { in a JSON text, outside strings. */
 function depthOf(s: string): number {
   let d = 0, max = 0, inStr = false;

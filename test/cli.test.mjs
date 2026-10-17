@@ -234,6 +234,9 @@ const CASES = [
       ['Edit', '.txt', 'no-anchor'], ['Write', '.txt', 'not-read'], ['Edit', '.txt', 'other']].map(([tool, verb, ek], i) => ({ k: 'call', id: `toolu_errors2_${pad2(i + 1)}`, tool, verb, ek }))] },
   { file: fixture('unicode.jsonl'), sid: 'unicode.', minPayload: 3, expected: [{ k: 'turn', line: 1, ch: 'typed' },
     { k: 'call', id: 'toolu_unicode_01', tool: 'Read', verb: '.txt' }] },
+  // the records Claude Code 2.1.300 began to write beside the conversation: passed over, nothing in them printed
+  { file: fixture('api-request-records.jsonl'), sid: 'api-requ', minPayload: 5, expected: [{ k: 'turn', line: 1, ch: 'typed' },
+    { k: 'call', id: 'toolu_reqrec_01', tool: 'Bash', verb: 'npm' }] },
 ];
 
 /** Every field of every expected line, computed from the raw records. */
@@ -804,4 +807,135 @@ test('the package: a shebang, no runtime dependencies, nothing imported but node
     for (const s of specifiers) assert.ok(s.startsWith('node:') || s === './parser.js', `${f} imports '${s}'`);
     assert.doesNotMatch(src, /\brequire\s*\(|\bimport\s*\(|\bfetch\s*\(|node:(?:https?|net|dgram|tls|http2|child_process)\b/, f);
   }
+});
+
+// ---- 0.0.2: what the fourth review found, each pinned ---------------------------------------------
+
+const README_TEXT = () => readFileSync(join(root, 'README.md'), 'utf8');
+/** A backslash, built rather than typed: an editor can turn a typed backslash-u into the character it names. */
+const BACKSLASH = String.fromCharCode(92);
+/** A JSON key whose first letter is written as a \u escape, so the file never holds the key's plain text. */
+const escapedKey = (word) => `"${BACKSLASH}u${word.charCodeAt(0).toString(16).padStart(4, '0')}${word.slice(1)}"`;
+const sessionEnv = { isSidechain: false, userType: 'external', cwd: '/w', version: '2.0.0', gitBranch: 'main', entrypoint: 'cli', sessionId: 's' };
+const uuidOf = (i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`;
+
+test('a toString or valueOf key written with a JSON escape cannot stop the file, in any field (review 4, P4-1)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  const PLACE = '@@crafted-object@@';
+  // a session of one call; each case puts the crafted object in one of the places the review found it stopped a file
+  const session = () => ({
+    prompt: { parentUuid: null, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' }, uuid: uuidOf(1) },
+    call: { parentUuid: uuidOf(1), ...sessionEnv, type: 'assistant', requestId: 'q1', message: { id: 'm1', role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'make' } }], usage: { input_tokens: 1, output_tokens: 1 } }, uuid: uuidOf(2) },
+    result: { parentUuid: uuidOf(2), ...sessionEnv, type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }] }, toolUseResult: {}, uuid: uuidOf(3) },
+    more: [],
+  });
+  const PLACES = {
+    'tool-name': (r) => { r.call.message.content[0].name = PLACE; },
+    'tool-id': (r) => { r.call.message.content[0].id = PLACE; r.result.message.content[0].tool_use_id = PLACE; },
+    'block-type': (r) => { r.call.message.content.push({ type: PLACE }); },
+    'usage-tokens': (r) => { Object.assign(r.call.message.usage, { input_tokens: PLACE, output_tokens: PLACE, cache_read_input_tokens: PLACE, cache_creation_input_tokens: PLACE }); },
+    'version': (r) => { r.call.version = PLACE; },
+    'prompt-text-block': (r) => { r.prompt.message.content = [{ type: 'text', text: PLACE }]; },
+    'record-type': (r) => { r.more.push({ parentUuid: uuidOf(3), ...sessionEnv, type: PLACE, uuid: uuidOf(9) }); },
+    'system-subtype': (r) => { r.more.push({ parentUuid: uuidOf(3), ...sessionEnv, type: 'system', subtype: PLACE, uuid: uuidOf(9) }); },
+    'attachment-type': (r) => { r.more.push({ parentUuid: uuidOf(3), ...sessionEnv, type: 'attachment', attachment: { type: PLACE }, uuid: uuidOf(9) }); },
+    'side-record-type': (r) => { r.more.push({ type: PLACE }); },
+    'uuid-without-request-id': (r) => { delete r.call.requestId; delete r.call.message.id; r.call.uuid = PLACE; r.result.parentUuid = PLACE; },
+  };
+  try {
+    const files = [];
+    for (const word of ['toString', 'valueOf']) for (const [place, put] of Object.entries(PLACES)) {
+      const r = session();
+      put(r);
+      const crafted = `{${escapedKey(word)}:1}`;
+      const text = [r.prompt, r.call, r.result, ...r.more].map((o) => JSON.stringify(o).replaceAll(`"${PLACE}"`, crafted)).join('\n') + '\n';
+      assert.ok(text.includes(crafted) && !text.includes('toString') && !text.includes('valueOf'), `${place}: the key must appear only escaped`);
+      const file = join(dir, `${word}-${place}.jsonl`);
+      writeFileSync(file, text);
+      files.push(file);
+    }
+    for (const cmd of ['stats', 'skeleton']) {
+      const r = run(cmd, ...files);
+      assert.equal(r.code, 0, r.err);
+      assert.doesNotMatch(r.err, /internal error/);
+    }
+    assert.equal(nonEmpty(run('stats', ...files).out).length, files.length);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the library: a line repaired by stripping NUL bytes is checked for depth again (review 4, P4-6)', async () => {
+  const { parseTranscript } = await import(new URL(`file://${join(dirname(CLI), 'parser.js')}`).href);
+  const NUL = String.fromCharCode(0);
+  // with the NUL, a backslash escapes it and the next backslash escapes the quote, so the string runs on and hides
+  // the brackets; without it, the string ends at the quote and the brackets are 20,000 levels deep
+  const line = `{"a":"x${BACKSLASH}${NUL}${BACKSLASH}","b":${'['.repeat(20000)}${']'.repeat(20000)}}`;
+  const t = parseTranscript(line + '\n', { repairNul: true });
+  assert.equal(t.records.length, 0);
+  assert.deepEqual(t.problems.map((p) => p.reason), ['too-deep']);
+});
+
+test('a hook block whose bracketed command is longer than 300 characters is still a hook-block, with no name (review 4, O8)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  try {
+    const block = `PreToolUse:Bash hook error: [bash /x/demo-gate.sh ${'a'.repeat(290)}]: invented reason`;
+    const lines = [
+      { parentUuid: null, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' }, uuid: uuidOf(1) },
+      { parentUuid: uuidOf(1), ...sessionEnv, type: 'assistant', requestId: 'q1', message: { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'make' } }] }, uuid: uuidOf(2) },
+      { parentUuid: uuidOf(2), ...sessionEnv, type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: block, is_error: true }] }, toolUseResult: `Error: ${block}`, uuid: uuidOf(3) },
+    ];
+    writeFileSync(join(dir, 'long-hook.jsonl'), lines.map((o) => JSON.stringify(o)).join('\n') + '\n');
+    const call = parsed(run('skeleton', join(dir, 'long-hook.jsonl')).out).find((o) => o.k === 'call');
+    assert.equal(call.ek, 'hook-block');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a value too large to write as JSON prints (too large), with a warning, and the rest of the file is read (review 4, P4-2)',
+  { skip: !process.env.MEMOBRAIN_HEAVY && 'set MEMOBRAIN_HEAVY=1 to run: it writes a file of about 125 MB and needs about 3 GB of memory' }, () => {
+    const dir = mkdtempSync(join(tmpdir(), 'memobrain-heavy-'));
+    try {
+      // 1e20 is 4 characters in the file and 21 digits when JSON.stringify writes it: enough of them pass the string limit
+      const count = Math.ceil(constants.MAX_STRING_LENGTH / 22) + 1000;
+      const head = [
+        JSON.stringify({ parentUuid: null, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'go' }, uuid: uuidOf(1) }),
+      ];
+      const big = `{"parentUuid":"${uuidOf(1)}","type":"assistant","uuid":"${uuidOf(2)}","sessionId":"s","requestId":"q1","message":{"role":"assistant","content":[`
+        + `{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"make demo","x":[${'1e20,'.repeat(count - 1)}1e20]}},`
+        + `{"type":"tool_use","id":"t2","name":"Bash","input":{"command":"git status"}}]}}`;
+      const tail = [
+        JSON.stringify({ parentUuid: uuidOf(2), ...sessionEnv, type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }] }, toolUseResult: {}, uuid: uuidOf(3) }),
+        JSON.stringify({ parentUuid: uuidOf(3), ...sessionEnv, type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't2', content: 'ok' }] }, toolUseResult: {}, uuid: uuidOf(4) }),
+      ];
+      writeFileSync(join(dir, 'too-large.jsonl'), [...head, big, ...tail].join('\n') + '\n');
+      const r = spawnSync(process.execPath, ['--max-old-space-size=3072', CLI, 'skeleton', join(dir, 'too-large.jsonl')], { encoding: 'utf8', timeout: 300000, maxBuffer: 1 << 24 });
+      assert.equal(r.status, 0, r.stderr);
+      const calls = parsed(r.stdout).filter((o) => o.k === 'call');
+      assert.deepEqual(calls.map((c) => [c.verb, c.in === '(too large)', /^[0-9a-f]{12}$/.test(c.in)]), [['make', true, false], ['git', false, true]]);
+      assert.match(r.stderr, /1 call holds a value too large to write as JSON/);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+test('README: it opens with why memobrain exists, compaction, then what it prints', () => {
+  const opening = README_TEXT().split('\n\n')[1];
+  assert.match(opening, /compact/i, 'the first paragraph does not name compaction');
+});
+
+test('README: every heading appears once (review 4, O10)', () => {
+  const headings = README_TEXT().split('\n').filter((l) => /^#{1,6} /.test(l));
+  assert.ok(headings.length >= 8, `only ${headings.length} headings were read`);
+  assert.deepEqual(headings.filter((h, i) => headings.indexOf(h) !== i), []);
+});
+
+test('README and --help name every value the output can hold, and claim nothing the output does not do (review 4, O4 O5 P4-7)', () => {
+  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+  // a phrase may wrap across lines (--help is cut at 80 columns): blanks are collapsed before matching
+  for (const [where, text] of [['README', README_TEXT()], ['--help', run('--help').out]].map(([w, t]) => [w, t.replace(/\s+/g, ' ')])) {
+    for (const v of ['(none)', '(empty)', '(withheld)', '(too large)']) assert.ok(text.includes(v), `${where} does not name ${v}`);
+    assert.match(text, /\bnone\b[^.;|]*no channel/, `${where} does not say what the channel none means`);
+    assert.doesNotMatch(text, /keys in the transcript's order/, `${where} still claims the transcript's key order`);
+    assert.doesNotMatch(text, /Every payload is replaced by an address and a hash/, `${where} still says every line carries a hash`);
+    assert.match(text, /unquoted `?\$NAME/, `${where} does not give env's rule for an unquoted $NAME`);
+    assert.match(text, /after `?command`? or `?time`?/i, `${where} does not say what command and exec are after command or time`);
+    assert.match(text, /none when two or more do/, `${where} does not say a hook name needs exactly one script word`);
+  }
+  assert.doesNotMatch(pkg.description, /every turn and tool call as an address and a hash/i, 'package.json still says every turn has a hash');
 });

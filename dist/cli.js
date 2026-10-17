@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-// memobrain: the structure of Claude Code transcripts, without their content.
+// memobrain: an index of Claude Code transcripts, without their content.
+//
+// When Claude Code compacts a session, the model's context is replaced by a summary, but the transcript on disk keeps
+// every record (it is only ever appended to). The index lets what compaction took out of the context be found again.
 //
 // Every turn and every tool call on a session's live path becomes one JSON line in which the
 // payload is replaced by an ADDRESS (where it lives: <first 8 chars of the file name>:L<line>)
@@ -19,9 +22,16 @@ const USAGE = `Usage:
   memobrain --help                     show the help, with every output field
   memobrain --version                  show the version
 `;
-const HELP = `memobrain: the structure of Claude Code transcripts, without their content.
+const HELP = `memobrain: an index of Claude Code transcripts, without their content.
 
 ${USAGE}
+When Claude Code compacts a session, the conversation in the model's context
+is replaced by a summary, but the transcript on disk keeps every record:
+Claude Code only appends to it. memobrain prints an index of the transcript,
+one line per turn and per tool call, each with the line of the file where it
+is written, so what compaction took out of the context can be found and read
+again (for line 22: sed -n 22p <file>).
+
 Claude Code keeps transcripts in ~/.claude/projects/<project>/<session>.jsonl.
 memobrain reads only the files it is given, writes only to stdout and stderr,
 and uses no network.
@@ -29,9 +39,11 @@ and uses no network.
 It follows each session's live path: the branch the session ended on, as the
 transcript's own last-prompt record names it (without one, the branch of the
 last record written), joined across compactions and late-written error
-records. Every payload is replaced by an address and a hash. An address is
-<prefix>:L<line number>: the prefix is the file name's first 8 characters, or,
-for a subagent's agent-<id>.jsonl, agent- and the id's first 8.
+records. No line holds content. A turn line gives the address of its prompt;
+a call line gives the addresses of the call and its result, and hashes of what
+went in and what came out. An address is <prefix>:L<line number>: the prefix
+is the file name's first 8 characters, or, for a subagent's agent-<id>.jsonl,
+agent- and the id's first 8.
 
 skeleton, one line per turn:
   k             "turn"
@@ -39,7 +51,7 @@ skeleton, one line per turn:
   ta            turn id: <prefix>:T001, T002, ...
   ch            channel the prompt came through: typed, sdk, input, task,
                 loop, parent, or the record's own word for another agent
-                (for example peer)
+                (for example peer); none when the record names no channel
   n             length of the prompt text (JavaScript string length: UTF-16
                 code units)
 
@@ -49,45 +61,59 @@ skeleton, one line per tool call, after the turn it belongs to:
   ta            the turn it belongs to
   tool          tool name
   verb          a short label for what the call did. Bash: the program the
-                command runs, by a whitelist: printed only when it is a plain
-                word (letters, digits and . _ / : , + % @ = ~ ^ -) and every
-                word before it can be passed over with certainty: blank and
-                comment lines; cd DIR (with redirections) followed by && ; or
-                a newline; NAME=value with a plain, '...', simple "..." or
-                $NAME value; an opening ( { or !; the wrappers nohup, command,
-                exec, time (-p), env (-i, NAME=value), timeout (a duration)
-                and nice (-n N). A path is cut to its last part; a command
-                that only assigns values is labelled by the program inside
-                its first $(...) when that is made of such words; a wrapper
-                with nothing after it is the program; [ [[ and shell keywords
-                print as themselves. Anything else before the program, a
-                program that is not a plain word, or a function definition
-                gives (withheld). Read, Edit, Write, NotebookEdit: the file's
-                extension (its name when it has none). Agent, Task: the
-                subagent type. Skill: the skill name. Other tools: the name
-  in            sha256 of the input as JSON.stringify writes it (a missing
-                input counts as {}), first 12 hex characters
-  ok            true when the call succeeded, false when it failed, null when
-                no result was recorded (the session ended, or the file was
-                cut, before the call returned)
+                command runs, by a whitelist (the README's "The Bash verb"
+                has every rule): printed only when it is a plain word and
+                every word before it can be passed over with certainty:
+                blank and comment lines; cd DIR (with redirections) followed
+                by && ; or a newline; NAME=value with a plain, '...', simple
+                "..." or $NAME value; an opening ( { or !; the wrappers nohup,
+                command, exec, time (-p; only where a command starts), env
+                (-i, NAME=value; an unquoted $NAME withholds the verb),
+                timeout (a duration) and nice (-n N or -N). After nohup, env,
+                nice, timeout or exec, which look the next word up as a file,
+                command and exec are programs of their own; after command or
+                time they are still the shell's builtins. A path is cut to its
+                last part. (empty) when nothing runs after the words passed
+                over, or the call has no command; a command that only assigns
+                values is labelled by the program inside its first $(...) when
+                that is made of such words. A wrapper with nothing after it
+                but its own options is the program; [ [[ and shell keywords
+                print as themselves. Anything else before the program, more
+                than 63 words or 15 commands before it, a program that is not
+                a plain word, or a function definition gives (withheld).
+                Read, Edit, Write, NotebookEdit: the file's extension (its
+                name when it has none; (none) when there is no path, or it
+                ends in /). Agent, Task: the subagent type. Skill: the skill
+                name. Other tools: the name
+  in            sha256 of the input as JSON.stringify writes it (integer-like
+                keys first; a missing input counts as {}), first 12 hex
+                characters; (too large) when the input, written as JSON,
+                would pass JavaScript's limit on a string's length
+  ok            true when the call succeeded; false when it failed (its
+                result is marked is_error, or Claude Code wrote the error as
+                a string in toolUseResult); null when no result was recorded
+                (the session ended, or the file was cut, before the call
+                returned)
   ek            error class, only when the call failed, from the result's
                 first line: exit-<code> (a leading "Exit code N", read
                 first), hook-block:<hook script name> or hook-block (Claude
                 Code's own format only: PreToolUse:<tool> hook error:
-                [<command>]; the name is the first word in the brackets with
-                a script extension), no-anchor, not-read, bad-input, denied,
-                other
+                [<command>]; the name is the one word in the brackets with a
+                script extension (.sh .bash .py .js .mjs .cjs .ts .rb .pl),
+                cut at the extension, none when two or more do, at most 48
+                characters; a bracket longer than 300 characters gives
+                hook-block), no-anchor, not-read, bad-input, denied, other
   r             address of the result, or null when none was recorded
   out           sha256 of the result text (UTF-8), first 12 hex characters;
-                of the whole result as JSON when it holds anything but text;
-                null when no result was recorded
+                of the whole result as JSON when it holds anything but text
+                ((too large) as for in); null when no result was recorded
   n             length of the result text, JavaScript string length (null
                 when no result was recorded)
 
 A label (tool, verb, ch, the hook name in ek) is printed only when it looks
-like one: at most 64 letters, digits and . _ : + - (a file name or extension:
-without ':'; the shell's [ and [[ as they are). Anything else prints as
-(withheld).
+like one: at most 64 ASCII letters, digits and . _ : + - (a file name or
+extension: without ':'; the shell's [ and [[ as they are). Anything else
+prints as (withheld).
 
 stats, one line per file:
   session       the file's address prefix
@@ -99,17 +125,18 @@ stats, one line per file:
   errorClasses  failures by error class
   retries       calls right after a failed call in the same turn, with the
                 same tool, issued after its result
-  detours       calls right after a failed call in the same turn, with a
-                different tool
-  maxHops       the longest chain of failures with one verb that a later
-                success with that verb closed in the same turn, counting
-                the success
+  detours       the same, with a different tool
+  maxHops       the longest chain of failures with one verb, each issued
+                after the previous one's result, that a later success with
+                that verb closed in the same turn, counting the success. A
+                failure with another verb ends a chain and starts a new one,
+                even when it was sent in the same response
   hopsOver2     chains of more than 2 hops
 
 Warnings go to stderr: lines that are not JSON objects (or are nested more
 than 1,000 levels deep), files with nothing to show (empty, a workflow journal,
-no conversation records, no turns), and records whose parent links loop, so a
-zero never reads as a clean result.
+no conversation records, no turns), records whose parent links loop, and
+values too large to hash, so a zero never reads as a clean result.
 
 Exit status: 0 when every file was processed, 1 when a file could not be read
 or processed, 2 on a usage error.
@@ -151,6 +178,9 @@ const INNER = /(?:[A-Za-z0-9_.\/:,+%@=~^*? \t\n;&|<>-]|'[^']*'|"(?:[^"\\$`]|\$(?
  *  keyword only where a command starts; elsewhere it is a program of its own. (builtin is not a wrapper here: what
  *  follows it names a builtin, or an error.) */
 const WRAPPERS = new Set(['time', 'nohup', 'env', 'command', 'exec', 'timeout', 'nice']);
+/** The wrappers that look the next word up as a file on PATH. After one of them, command and exec are programs of their
+ *  own; after command (a builtin) or time (a keyword), they are still the shell's builtins. */
+const LOOK_UP_ON_PATH = new Set(['nohup', 'env', 'nice', 'timeout', 'exec']);
 /** Bash: the program in command position, by the whitelist above. A path prints its last segment; [ and [[ print
  *  as themselves, and so does a shell keyword (if, for, while, ...): neither carries payload. A command whose only
  *  words are assignments prints (empty), or, when the first assignment's value is a substitution $(...) or
@@ -191,7 +221,7 @@ function bashVerb(s, depth = 0) {
             }
             break;
         }
-        let first = true, next = false, wrapped = false;
+        let first = true, next = false, wrapped = false, lookedUp = false;
         while (!next) {
             if (i >= s.length)
                 return sub ?? '(empty)';
@@ -266,10 +296,12 @@ function bashVerb(s, depth = 0) {
                 next = true;
                 continue;
             }
-            // time is the keyword only where a command starts; after a wrapper, command and exec are files on PATH
-            if (WRAPPERS.has(x) && (x !== 'time' || first) && !(wrapped && (x === 'command' || x === 'exec'))) {
+            // time is the keyword only where a command starts; after a wrapper that looks its next word up on PATH, command
+            // and exec are files there, not the shell's builtins
+            if (WRAPPERS.has(x) && (x !== 'time' || first) && !(lookedUp && (x === 'command' || x === 'exec'))) {
                 first = false;
                 wrapped = true;
+                lookedUp = LOOK_UP_ON_PATH.has(x);
                 if (x === 'time' && s.startsWith('-p', i) && ends(i + 2)) {
                     i += 2;
                     blank();
@@ -282,8 +314,8 @@ function bashVerb(s, depth = 0) {
                     blank();
                 }
                 if (x === 'nice') {
-                    const d = at(/(?:-n[ \t]+-?\d+|-\d+)(?=[ \t])/y, i);
-                    if (d !== null) {
+                    const d = at(/-n[ \t]+-?\d+|-\d+/y, i);
+                    if (d !== null && ends(i + d.length)) {
                         i += d.length;
                         blank();
                     }
@@ -355,14 +387,19 @@ function verbOf(tool, input) {
     return label(tool, WITHHELD);
 }
 /** A failed call's error CLASS, by fixed rules over the result's FIRST line: a label, never the text. A hook block
- *  is recognised only in the harness's own format (PreToolUse:<tool> hook error: [<command>]: ...); the hook's name
- *  is the first word inside those brackets that ends in a script extension (.sh .py .js ...), cut at the extension,
- *  and it passes the label rule or the class is plain hook-block. An exit code is read only from a leading
- *  "Exit code N", before anything else, so a command's own output cannot change its class. */
+ *  is recognised only in the harness's own format (PreToolUse:<tool> hook error: [<command>]: ...). The hook's name is
+ *  the one word inside those brackets that ends in a script extension (.sh .bash .py .js .mjs .cjs .ts .rb .pl), cut at
+ *  the extension: none when two or more words do (one of them is an argument, and which is not certain), and none
+ *  when it is longer than 48 characters or fails the label rule. A bracket longer than 300 characters is a plain
+ *  hook-block. An exit code is read only from a leading "Exit code N", before anything else, so a command's own
+ *  output cannot change its class. */
 function errorClass(text) {
     const first = (text.split('\n').find((l) => l.trim()) || '').slice(0, 400);
-    const hook = /^PreToolUse:[\w.:-]* hook error: \[([^\]]{0,300})\]/.exec(first);
-    if (hook) {
+    const opening = /^PreToolUse:[\w.:-]* hook error: \[/.exec(first);
+    if (opening) {
+        const hook = /^([^\]]{0,300})\]/.exec(first.slice(opening[0].length));
+        if (!hook)
+            return 'hook-block';
         const scripts = hook[1].trim().split(/\s+/).map((w) => /(?:^|[\\/])([\w.-]+)\.(?:sh|bash|mjs|cjs|js|ts|py|rb|pl)$/.exec(w)).filter(Boolean);
         // one script word is the hook's; with two or more, one of them is an argument, and which is not certain
         const script = scripts.length === 1 ? scripts[0] : null;
@@ -383,9 +420,22 @@ function errorClass(text) {
 }
 /** Content as one string: a string as it is; an array as its text blocks (and bare strings) joined by newlines. */
 const flat = (c) => (typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => (typeof x === 'string' ? x : typeof x?.text === 'string' ? x.text : '')).join('\n') : '');
-/** The parser skips a line nested deeper than 1,000 levels, so what is serialized here stays far from the stack's
- *  limit. */
-const jsonHash = (v) => h12(JSON.stringify(v) ?? '');
+/** Printed in place of a hash when the value, written as JSON, would pass JavaScript's limit on a string's length. */
+const TOO_LARGE = '(too large)';
+/** The parser skips a line nested deeper than 1,000 levels, so the stack is safe here. The length is not: JSON.stringify
+ *  can write a value longer than its text in the file (1e20 is written as 21 digits), so a line under the size limit
+ *  can still serialize past the string limit. That value prints as (too large), with a warning, and the rest of the
+ *  file is read as usual. */
+const jsonHash = (v) => {
+    try {
+        return h12(JSON.stringify(v) ?? '');
+    }
+    catch (e) {
+        if (e instanceof RangeError)
+            return TOO_LARGE;
+        throw e;
+    }
+};
 /** What a result's hash covers: its text, or, when it holds anything else (an image), the whole content as JSON. */
 const outHash = (c) => (Array.isArray(c) && c.some((x) => isRecord(x) && x.type !== 'text') ? jsonHash(c) : h12(flat(c)));
 const promptLen = (rec) => flat(rec?.message?.content).length;
@@ -504,6 +554,9 @@ function warningsFor(cmd, file, t, lines) {
     }
     else if (lines.length === 0)
         warnings.push(`memobrain ${cmd}: warning: '${file}' has conversation records but no turn on its live path, so ${consequence}.`);
+    const large = lines.filter((l) => l.k === 'call' && (l.in === TOO_LARGE || l.out === TOO_LARGE)).length;
+    if (large)
+        warnings.push(`memobrain ${cmd}: warning: '${file}': ${large} call${large === 1 ? ' holds' : 's hold'} a value too large to write as JSON (it would pass JavaScript's limit on a string's length), so ${large === 1 ? 'its' : 'their'} in or out prints ${TOO_LARGE}.`);
     const c = t.fileKind === 'transcript' ? cycleRecords(t) : 0;
     if (c)
         warnings.push(`memobrain ${cmd}: warning: '${file}': ${c} record${c === 1 ? '' : 's'} sit${c === 1 ? 's' : ''} on a parentUuid cycle or below one (following the parent links never reaches the start of the session), so the live path through ${c === 1 ? 'it' : 'them'} may be incomplete.`);

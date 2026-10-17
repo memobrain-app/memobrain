@@ -1,7 +1,7 @@
 {
   "name": "memobrain",
-  "version": "0.0.1",
-  "description": "Show the structure of Claude Code session transcripts without their content: every turn and tool call as an address and a hash.",
+  "version": "0.0.2",
+  "description": "Index a Claude Code session transcript to find what compaction took out of the context: one line per turn and tool call, with its address in the file and no content.",
   "type": "module",
   "bin": {
     "memobrain": "dist/cli.js"
