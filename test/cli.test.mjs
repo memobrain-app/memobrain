@@ -980,7 +980,7 @@ test('README and --help name every value the output can hold, and claim nothing 
     assert.doesNotMatch(text, /Every payload is replaced by an address and a hash/, `${where} still says every line carries a hash`);
     assert.match(text, /unquoted `?\$NAME/, `${where} does not give env's rule for an unquoted $NAME`);
     assert.match(text, /after `?command`? or `?time`?/i, `${where} does not say what command and exec are after command or time`);
-    assert.match(text, /hook-block`?,? when two or more words do|when two or more words do,[^.]*plain `?hook-block/, `${where} does not say a hook name needs exactly one script word`);
+    assert.match(text, /plain `?hook-block`?,? when two or more words do|when two or more words end in a script extension[^.]*plain `?hook-block/, `${where} does not say a hook name needs exactly one script word`);
   }
   assert.doesNotMatch(pkg.description, /every turn and tool call as an address and a hash/i, 'package.json still says every turn has a hash');
 });

@@ -42,10 +42,11 @@ last record written), joined across compactions and late-written error
 records. No line holds a prompt, a reply, a tool input or a tool output (the
 labels are short words read from them, by the label rule below). A turn line
 gives the address of its prompt; a call line gives the addresses of the call
-and its result, and hashes of what went in and what came out. An address is <prefix>:L<line number>: the prefix
-is the file name's first 8 characters, or, for a subagent's agent-<id>.jsonl,
-agent- and the id's first 8. Files whose names start with the same 8
-characters get the same prefix: give them to separate runs.
+and its result, and hashes of what went in and what came out. An address is
+<prefix>:L<line number>: the prefix is the file name's first 8 characters,
+or, for a subagent's agent-<id>.jsonl, agent- and the id's first 8. Files
+that get the same prefix cannot be told apart in one run: give them to
+separate runs.
 
 skeleton, one line per turn:
   k             "turn"
@@ -108,12 +109,14 @@ skeleton, one line per tool call, after the turn it belongs to:
                 first line: exit-<code> (a leading "Exit code N", read
                 first), hook-block:<hook script name> or hook-block (Claude
                 Code's own format only: PreToolUse:<tool> hook error:
-                [<command>]; the name is the one word in the brackets with a
-                script extension (.sh .bash .py .js .mjs .cjs .ts .rb .pl),
-                cut at the extension, at most 48 characters; a plain
-                hook-block when two or more words do, when the name is
-                longer, or when the bracket is longer than 300 characters),
-                no-anchor, not-read, bad-input, denied, other
+                [<command>]; the name is the last part of the path of the one
+                word in the brackets with a script extension (.sh .bash .py
+                .js .mjs .cjs .ts .rb .pl), cut at the extension, when it is
+                made of ASCII letters, digits, _ . and - and is at most 48
+                characters; a plain hook-block when two or more words do,
+                when the name does not qualify, or when the bracket is longer
+                than 300 characters), no-anchor, not-read, bad-input,
+                denied, other
   r             address of the result, or null when none was recorded
   out           sha256 of the result text (UTF-8), first 12 hex characters;
                 of the whole result as JSON when it holds anything but text
