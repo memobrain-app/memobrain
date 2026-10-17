@@ -113,8 +113,9 @@ skeleton, one line per tool call, after the turn it belongs to:
                 word in the brackets with a script extension (.sh .bash .py
                 .js .mjs .cjs .ts .rb .pl; quotes and punctuation around it
                 are not part of it), cut at the extension, when that word is
-                the command or comes right after an interpreter (node, deno,
-                bun, python, bash, sh, zsh, dash, ksh, ruby, perl, tsx,
+                the command or comes right after an interpreter (node or
+                nodejs, deno, bun, python, python3 or another python
+                version, bash, sh, zsh, dash, ksh, ruby, perl, tsx or
                 ts-node), after any leading env (-i) and NAME=value words;
                 and when it is made of ASCII letters, digits, _ . and - and is
                 at most 48 characters; a plain hook-block when two or more
@@ -159,6 +160,8 @@ too large to hash, files in one run that share a prefix, and records whose
 response was read from their parent links (no requestId and no string
 message.id), so a zero never reads as a clean result. An internal error is
 reported by its kind and where in memobrain it happened, never its message.
+
+Every rule in full is in the README: https://github.com/memobrain-app/memobrain
 
 Exit status: 0 when every file was processed, 1 when a file could not be read
 or processed, 2 on a usage error.
@@ -641,14 +644,18 @@ function printVersion() {
         return 1;
     }
 }
-/** An internal error by its kind and by the place in memobrain's code where it was raised, never by its message: a
- *  message can quote the value that caused it, and so could a future bug's, with the transcript's text in it. */
+/** An internal error by its kind and by the place in memobrain's own code where it was raised, never by its message: a
+ *  message can quote the value that caused it, and so could a future bug's, with the transcript's text in it. The stack
+ *  opens with "<name>: <message>", and a message can run over several lines shaped like frames: only what follows that
+ *  header is read as the stack, and only memobrain's own files are named. Anything else gives the kind alone. */
 function internalError(e) {
-    const kind = e instanceof Error && LABEL.test(e.name) ? e.name : 'Error';
-    const frames = e instanceof Error && typeof e.stack === 'string' ? e.stack.split('\n').slice(1) : [];
-    const frame = frames.map((l) => /([^()\s]+?):(\d+):\d+\)?$/.exec(l.trim())).find((m) => m !== null);
-    const file = frame ? frame[1].split(/[\\/]/).pop() ?? '' : '';
-    return frame && FILE_LABEL.test(file) ? `${kind} at ${file}:${frame[2]}` : kind;
+    if (!(e instanceof Error))
+        return 'Error';
+    const kind = LABEL.test(e.name) ? e.name : 'Error';
+    const head = e.message ? `${e.name}: ${e.message}` : e.name;
+    const stack = typeof e.stack === 'string' && e.stack.startsWith(head) ? e.stack.slice(head.length) : '';
+    const frame = stack.split('\n').map((l) => /^\s+at .*?([^()\s/\\]+\.js):(\d+):\d+\)?$/.exec(l)).find((m) => m !== null && /^(?:cli|parser)\.js$/.test(m[1]));
+    return frame ? `${kind} at ${frame[1]}:${frame[2]}` : kind;
 }
 /** Files that get one address prefix cannot be told apart in one run's output: say so, naming them. */
 function prefixCollisions(cmd, files) {

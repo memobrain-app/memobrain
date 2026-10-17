@@ -50,7 +50,7 @@ An address such as `demo.jso:L22` means line 22 of the file whose name starts wi
 | `verb` | call | a short label. For Bash, the program the command runs, read by the rule in [The Bash verb](#the-bash-verb) below; `(withheld)` when that rule cannot be sure, and `(empty)` when nothing runs or the call has no command. For Read, Edit, Write and NotebookEdit, the file's extension (its name when it has none; `(none)` when there is no path, or it ends in `/`). For Agent and Task, the subagent type (`agent` when the call names none); for Skill, the skill name (`skill` when it names none); for other tools, the tool's name |
 | `in` | call | sha256 of the input as JavaScript's `JSON.stringify` writes it (keys that are whole numbers up to 4294967294 first, in ascending order, then the others in the transcript's order; a missing input counts as `{}`), first 12 hex characters; `(too large)` when the input, written as JSON, would pass JavaScript's limit on a string's length (a warning says so) |
 | `ok` | call | `true` when the call succeeded; `false` when it failed (its result is marked `is_error`, or Claude Code wrote the error as a string in `toolUseResult`); `null` when no result was recorded (the session ended, or the file was cut, before the call returned, or the call was still running when the file was read, as the call that runs memobrain on its own session is) |
-| `ek` | call | only on a failed call, its error class, from the result's first line: `exit-<code>` (a leading `Exit code N`, up to 3 digits; read first, so a command's own output cannot change it), `hook-block:<hook script name>` and `hook-block` (only in Claude Code's own format, `PreToolUse:<tool> hook error: [<command>]`; the name is the last part of the path of the one word in the brackets that ends in a script extension (`.sh` `.bash` `.py` `.js` `.mjs` `.cjs` `.ts` `.rb` `.pl`, lower case; quotes and punctuation around a word are not part of it), cut at the extension, and it is printed only when that word is the command itself or comes right after an interpreter (`node`, `deno`, `bun`, `python`, `bash`, `sh`, `zsh`, `dash`, `ksh`, `ruby`, `perl`, `tsx`, `ts-node`), after any leading `env` (with `-i`) and `NAME=value` words (`bash /x/gate.sh` is how a hook's command is usually written), and the name is made of ASCII letters, digits, `_`, `.` and `-` and is at most 48 characters long; when two or more words end in a script extension, or the one such word stands anywhere else (an argument, an option's value, an assignment), or the name does not qualify, or the bracket is longer than 300 characters, the class is a plain `hook-block`), `no-anchor` (Edit's text was not found), `not-read`, `bad-input`, `denied`, `other` |
+| `ek` | call | only on a failed call, its error class, from the result's first line: `exit-<code>` (a leading `Exit code N`, up to 3 digits; read first, so a command's own output cannot change it), `hook-block:<hook script name>` and `hook-block` (only in Claude Code's own format, `PreToolUse:<tool> hook error: [<command>]`; the name is the last part of the path of the one word in the brackets that ends in a script extension (`.sh` `.bash` `.py` `.js` `.mjs` `.cjs` `.ts` `.rb` `.pl`, lower case; quotes and punctuation around a word are not part of it), cut at the extension, and it is printed only when that word is the command itself or comes right after an interpreter (`node` or `nodejs`, `deno`, `bun`, `python`, `python3` or another Python version such as `python3.12`, `bash`, `sh`, `zsh`, `dash`, `ksh`, `ruby`, `perl`, `tsx`, `ts-node`), after any leading `env` (with `-i`) and `NAME=value` words (`bash /x/gate.sh` is how a hook's command is usually written), and the name is made of ASCII letters, digits, `_`, `.` and `-` and is at most 48 characters long; when two or more words end in a script extension, or the one such word stands anywhere else (an argument, an option's value, an assignment), or the name does not qualify, or the bracket is longer than 300 characters, the class is a plain `hook-block`), `no-anchor` (Edit's text was not found), `not-read`, `bad-input`, `denied`, `other` |
 | `r` | call | address of the result, or `null` when none was recorded |
 | `out` | call | sha256 of the result text (its UTF-8 bytes; blocks joined as for `n`), first 12 hex characters; of the whole result as JSON when it holds anything but text (an image), with `(too large)` as for `in`; `null` when no result was recorded |
 
@@ -132,7 +132,7 @@ Exit status: 0 when every file was processed, 1 when a file could not be read or
 
 ## Status
 
-Version 0.0.2. Early: the output format may change between versions.
+Version 0.0.3. Early: the output format may change between versions.
 
 ## Development
 
@@ -142,7 +142,7 @@ npm run build    # compiles src/ to dist/
 npm test         # runs test/cli.test.mjs against dist/cli.js
 ```
 
-`MEMOBRAIN_HEAVY=1 npm test` also runs a test that writes a file of about 125 MB and needs about 3 GB of memory.
+`MEMOBRAIN_HEAVY=1 npm test` also runs two tests that write files of about 125 MB, one file at a time (the second writes nine), and need about 3 GB of memory.
 
 The test transcripts in `test/fixtures/` are synthetic, with invented text: some hand-written, the rest written by `node test/make-fixtures.mjs test/fixtures` (the output is the same on every run).
 

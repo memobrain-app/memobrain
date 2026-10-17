@@ -1264,3 +1264,28 @@ test('a bad line is reported by its count and its first line number only: no par
     }
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('an internal error whose message runs over several lines cannot pass a line of it off as the place (review 7, N7-1)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memobrain-test-'));
+  try {
+    // the message holds lines shaped like stack frames, as a future bug quoting the transcript could: one with a ZQX
+    // file, one naming memobrain's own parser.js at a line number no real frame has
+    const hook = join(dir, 'throw.js');   // a .js file of someone else's on top of the stack: it must not be named either
+    writeFileSync(hook, "const orig = String.prototype.trimStart;\nString.prototype.trimStart = function () { if (this.includes('ZQXCRASH')) throw new TypeError('quoted\\n    at ZQXFN (/x/ZQXFILE.js:12:34)\\n    at q (/x/parser.js:987654:1)\\nZQXWORD.js:56:78'); return orig.call(this); };\n");
+    const f = join(dir, 'crash.jsonl');
+    writeFileSync(f, JSON.stringify({ parentUuid: null, ...sessionEnv, type: 'user', promptSource: 'typed', message: { role: 'user', content: 'ZQXCRASH' }, uuid: uuidOf(1) }) + '\n');
+    const r = spawnSync(process.execPath, ['--import', new URL(`file://${hook}`).href, CLI, 'stats', f], { encoding: 'utf8', timeout: 20000 });
+    assert.equal(r.status, 1, r.stderr);
+    assert.match(r.stderr, /internal error \(TypeError(?: at (?:cli|parser)\.js:\d+)?\)/);
+    assert.doesNotMatch(r.stderr, /ZQX|987654|quoted/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('README: its Status names the version in package.json, and the interpreter list names what the rule accepts (review 7, N7-2 N7-3)', () => {
+  const v = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
+  assert.match(README_TEXT(), new RegExp(`## Status\\s+Version ${escapeRe(v)}\\.`));
+  for (const [where, text] of [['README', README_TEXT()], ['--help', run('--help').out]].map(([w, t]) => [w, t.replace(/\s+/g, ' ')])) {
+    assert.match(text, /nodejs/, `${where} does not name nodejs`);
+    assert.match(text, /python3/, `${where} does not name python3`);
+  }
+});
