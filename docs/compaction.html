@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Claude Code&#x27;s compaction doesn&#x27;t delete your history. It re-roots it.</title>
+<meta name="description" content="Claude Code&#x27;s /compact swaps the model&#x27;s context for a summary; the transcript on disk keeps every record. What each model keeps, and how to get it back.">
+<link rel="canonical" href="https://memobrain-app.github.io/memobrain/compaction.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Claude Code&#x27;s compaction doesn&#x27;t delete your history. It re-roots it.">
+<meta property="og:description" content="Claude Code&#x27;s /compact swaps the model&#x27;s context for a summary; the transcript on disk keeps every record. What each model keeps, and how to get it back.">
+<meta property="og:url" content="https://memobrain-app.github.io/memobrain/compaction.html">
+<meta name="twitter:card" content="summary">
+<meta name="color-scheme" content="light dark">
+<style>
+:root {
+  /* Layout: one reading column of about 68 characters; the drawing and the tables take the column's full width and
+     scroll sideways on a phone; a quiet top line names the project. */
+  --bg: #f5f7f7;
+  --surface: #eaeff0;
+  --fg: #172023;
+  --muted: #55636a;
+  --rule: #d2dadd;
+  --accent: #1c69ad;
+  --accent-tint: rgba(28, 105, 173, 0.11);
+  --font-text: "Iowan Old Style", "Palatino Linotype", Palatino, Charter, "Bitstream Charter", Georgia, serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-code: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11171a; --surface: #192125; --fg: #e1e7e9; --muted: #9ba8ae; --rule: #2b353a;
+    --accent: #6eb2ea; --accent-tint: rgba(110, 178, 234, 0.15); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11171a; --surface: #192125; --fg: #e1e7e9; --muted: #9ba8ae; --rule: #2b353a;
+  --accent: #6eb2ea; --accent-tint: rgba(110, 178, 234, 0.15); color-scheme: dark;
+}
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 1.0625rem/1.62 var(--font-text);
+  font-variant-numeric: lining-nums;
+  padding-block: 0 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-text-size-adjust: 100%;
+}
+.page { max-width: 42rem; margin: 0 auto; }
+.topline {
+  display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; justify-content: space-between; align-items: baseline;
+  padding-block: 1.1rem 0.9rem; border-bottom: 1px solid var(--rule);
+  font: 500 0.875rem/1.4 var(--font-ui); color: var(--muted);
+}
+.topline a { color: var(--fg); text-decoration: none; font-weight: 650; letter-spacing: 0.01em; }
+.topline a:hover { color: var(--accent); }
+header.article { padding-block: 2.2rem 0.5rem; }
+.eyebrow { font: 600 0.75rem/1.3 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin: 0 0 0.8rem; }
+h1, h2, h3 { font-family: var(--font-ui); color: var(--fg); text-wrap: balance; }
+h1 { font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.35rem); line-height: 1.15; font-weight: 720; letter-spacing: -0.015em; margin: 0 0 1rem; }
+.byline { font: 400 0.9rem/1.4 var(--font-ui); color: var(--muted); margin: 0 0 1.6rem; }
+.lead p { font-size: 1.15rem; line-height: 1.55; }
+h2 { font-size: 1.32rem; line-height: 1.25; font-weight: 680; margin: 2.8rem 0 0.8rem; padding-top: 0.2rem; scroll-margin-top: 1rem; }
+h3 { font-size: 1.06rem; line-height: 1.35; font-weight: 650; margin: 1.6rem 0 0.4rem; }
+p { margin: 0 0 1rem; }
+a { color: var(--accent); text-underline-offset: 0.15em; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+code {
+  font-family: var(--font-code); font-size: 0.84em; background: var(--surface); padding: 0.08em 0.32em;
+  border-radius: 4px; overflow-wrap: anywhere;
+}
+ul, ol { margin: 0 0 1rem; padding-left: 1.35rem; }
+li { margin: 0 0 0.5rem; }
+li::marker { color: var(--muted); }
+strong { font-weight: 650; }
+nav.toc { margin: 0.4rem 0 0.5rem; padding: 0.9rem 1rem 0.5rem; background: var(--surface); border-radius: 8px; }
+nav.toc p { font: 600 0.75rem/1.3 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.5rem; }
+nav.toc ol { font: 400 0.95rem/1.45 var(--font-ui); margin: 0 0 0.4rem; padding-left: 1.3rem; }
+nav.toc li { margin: 0 0 0.3rem; }
+nav.toc a { color: var(--fg); text-decoration: none; }
+nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+figure { margin: 1.4rem 0 1rem; }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+figure svg { display: block; width: 100%; min-width: 34rem; height: auto; }
+figcaption { font: 400 0.85rem/1.4 var(--font-ui); color: var(--muted); margin-top: 0.4rem; }
+.narrow-only { display: none; }
+@media (max-width: 36rem) { .narrow-only { display: inline; } }
+ol.wrapper { padding-left: 1.6rem; }
+ol.wrapper li { font-size: 0.98rem; }
+table { border-collapse: collapse; width: 100%; font: 400 0.9rem/1.4 var(--font-ui); font-variant-numeric: tabular-nums; margin: 0.4rem 0 1.2rem; }
+th, td { text-align: left; vertical-align: top; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); }
+th { font-weight: 650; color: var(--fg); border-bottom: 2px solid var(--rule); white-space: nowrap; }
+table.measures { min-width: 46rem; }
+table.runs { min-width: 34rem; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); font: 400 0.875rem/1.5 var(--font-ui); color: var(--muted); }
+footer p { margin: 0 0 0.4rem; }
+.d-edge { stroke: var(--muted); }
+.d-ink { fill: var(--fg); }
+.d-quiet { fill: var(--muted); }
+.d-accent-stroke { stroke: var(--accent); }
+.d-accent-fill { fill: var(--accent); }
+.d-box { fill: none; }
+.d-box-main { fill: var(--accent-tint); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "TechArticle",
+   "headline": "Claude Code's compaction doesn't delete your history. It re-roots it.",
+   "description": "Claude Code's /compact swaps the model's context for a summary; the transcript on disk keeps every record. What each model keeps, and how to get it back.",
+   "datePublished": "2026-10-18",
+   "dateModified": "2026-10-18",
+   "author": {
+    "@type": "Person",
+    "name": "Ohav Ben Yanai"
+   },
+   "publisher": {
+    "@type": "Organization",
+    "name": "memobrain",
+    "url": "https://github.com/memobrain-app/memobrain"
+   },
+   "mainEntityOfPage": "https://memobrain-app.github.io/memobrain/compaction.html"
+  },
+  {
+   "@type": "FAQPage",
+   "mainEntity": [
+    {
+     "@type": "Question",
+     "name": "Does /compact delete my conversation?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. It replaces the model's context with a summary and appends two records to the transcript. Every earlier record stays in the file (measured on 2.1.270 and 2.1.300)."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Where does Claude Code store conversation history?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "On your machine, in ~/.claude/projects/<project>/<session id>.jsonl, one JSON record per line. A subagent's work goes under <session id>/subagents/."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Why does Claude Code forget things after compacting?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "The model carries on from the summary, not from the file, so whatever the summary leaves out is gone from its context. In our test, Opus 5.5 and Sonnet 5.5 kept all 14 planted details, and Haiku 5.5 kept none."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Can I get back what was compacted?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes, from the file. The summary itself names the transcript's path, so the model can read it when you ask. An index such as memobrain finds the lines that matter."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Does Claude Code delete old conversations?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes, after 30 days by default. Compaction does not delete them, but the cleanup removes transcripts older than cleanupPeriodDays."
+     }
+    }
+   ]
+  }
+ ]
+}
+</script>
+</head>
+<body>
+<div class="page">
+<div class="topline"><a href="https://github.com/memobrain-app/memobrain">memobrain</a><span>Free, open-source, MIT</span></div>
+<article>
+<header class="article">
+<p class="eyebrow">Measured on Claude Code 2.1.270 to 2.1.300</p>
+<h1>Claude Code's compaction doesn't delete your history. It re-roots it.</h1>
+<p class="byline"><time datetime="2026-10-18">October 18, 2026</time> · Ohav Ben Yanai</p>
+</header>
+<div class="lead">
+<p>When Claude Code compacts a session, the model's context is replaced by a summary, but the transcript on disk keeps every record: measured on Claude Code 2.1.270 and 2.1.300, compaction only appends to the file.</p>
+<p>What the model carries forward is another matter. In our test, one session each on Opus 5.5 and Sonnet 5.5 kept all 14 planted details through <code>/compact</code>, sessions on Haiku 5.5 kept none, and the file kept every one.</p>
+</div>
+<nav class="toc" aria-label="On this page"><p>On this page</p><ol><li><a href="#where">Where Claude Code keeps your conversation history</a></li><li><a href="#what-compaction-writes">What compaction writes</a></li><li><a href="#cut-off">Why the history looks cut off after compaction</a></li><li><a href="#summary">What the summary says, and what it gets wrong</a></li><li><a href="#what-the-model-knows">What the model still knows after compaction</a></li><li><a href="#retrieval">Retrieval, from the computer-science side</a></li><li><a href="#keep-and-get-back">How to keep your history and get details back</a></li><li><a href="#faq">Questions people ask</a></li><li><a href="#how-we-measured">How we measured</a></li></ol></nav>
+
+<h2 id="where">Where Claude Code keeps your conversation history</h2>
+<p>Claude Code writes each session to one file on your machine: <code>~/.claude/projects/&lt;project&gt;/&lt;session id&gt;.jsonl</code>, one JSON record per line. A subagent's work goes to its own file under <code>&lt;session id&gt;/subagents/</code>.</p>
+<p>The file is append-only. We measured that two ways on Claude Code 2.1.270 (September 2026):</p>
+<ul>
+<li><strong>Snapshots.</strong> Every copy of a transcript taken during a session was a byte-for-byte prefix of every later copy, across compactions too.</li>
+<li><strong>System calls.</strong> Tracing the process, every time Claude Code opened a transcript to write, it opened it to append: 112 times in the terminal interface, 54 and 54 in two headless runs. There were 0 truncations, 0 positioned writes and 0 renames of a transcript, while the same traces showed Claude Code rewriting other files by write-then-rename.</li>
+</ul>
+<p>We repeated the snapshot test in four sessions on 2.1.300 (October 2026), with the same result: the file before a <code>/compact</code> is the first part of the file after it.</p>
+<p>So when people say compaction dropped part of a session, it was dropped from the model's context, not from the file.</p>
+<p>Compaction never deletes the file, but Claude Code's cleanup does. It deletes transcripts older than <code>cleanupPeriodDays</code>, 30 days by default (<a href="https://code.claude.com/docs/en/claude-directory">Anthropic's documentation</a>). We checked our own machine, which leaves the setting at its default, on October 18, 2026. Every session last written more than 30 days ago was gone from the folder (161 of 161). Every younger one was still there (67 of 67). We had the older ones only because we keep our own copies.</p>
+
+<h2 id="what-compaction-writes">What compaction writes</h2>
+<figure>
+<div class="scroll"><svg viewBox="0 0 760 530" role="img" aria-label="Compaction adds a new root; every old record stays where it was" font-size="13" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="lp-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-accent-fill"/></marker>
+  </defs>
+  <text x="24" y="34" font-size="15" font-weight="600" class="d-ink">Compaction adds a new root; every old record stays where it was</text>
+  <text x="180" y="70" text-anchor="middle" font-weight="600" class="d-ink">Before /compact</text>
+  <text x="470" y="70" text-anchor="middle" font-weight="600" class="d-ink">After /compact: two roots, nothing rewritten</text>
+  <g class="d-edge" stroke-width="1.25">
+    <line x1="180" x2="180" y1="122" y2="138"/><line x1="180" x2="180" y1="174" y2="190"/><line x1="180" x2="180" y1="226" y2="242"/>
+    <line x1="470" x2="470" y1="122" y2="138"/><line x1="470" x2="470" y1="174" y2="190"/><line x1="470" x2="470" y1="226" y2="242"/>
+    <line x1="470" x2="470" y1="368" y2="392"/><line x1="470" x2="470" y1="448" y2="470"/>
+  </g>
+  <g class="d-edge" stroke-width="1.25">
+    <rect x="80" y="86" width="200" height="36" rx="8" class="d-box"/><rect x="80" y="138" width="200" height="36" rx="8" class="d-box"/>
+    <rect x="80" y="190" width="200" height="36" rx="8" class="d-box"/><rect x="80" y="242" width="200" height="36" rx="8" class="d-box"/>
+    <rect x="370" y="86" width="200" height="36" rx="8" class="d-box"/><rect x="370" y="138" width="200" height="36" rx="8" class="d-box"/>
+    <rect x="370" y="190" width="200" height="36" rx="8" class="d-box"/><rect x="370" y="242" width="200" height="36" rx="8" class="d-box"/>
+    <rect x="370" y="392" width="200" height="56" rx="8" class="d-box"/><rect x="370" y="470" width="200" height="36" rx="8" class="d-box"/>
+  </g>
+  <rect x="370" y="312" width="200" height="56" rx="8" class="d-box-main d-accent-stroke" stroke-width="2"/>
+  <g text-anchor="middle" class="d-ink">
+    <text x="180" y="108">prompt 1</text><text x="180" y="160">reply 1</text><text x="180" y="212">prompt 2</text><text x="180" y="264">reply 2</text>
+    <text x="470" y="108">prompt 1</text><text x="470" y="160">reply 1</text><text x="470" y="212">prompt 2</text><text x="470" y="264">reply 2</text>
+    <text x="470" y="336" font-weight="600">compact_boundary</text><text x="470" y="352" font-size="11.5">a new root</text>
+    <text x="470" y="416" font-weight="600">summary</text>
+    <text x="470" y="492">the session goes on</text>
+  </g>
+  <text x="470" y="300" text-anchor="middle" font-size="11.5" class="d-quiet">no line here: parentUuid is null</text>
+  <text x="470" y="432" text-anchor="middle" font-size="11.5" class="d-quiet">names the transcript path</text>
+  <path d="M570 340H612V260H572" fill="none" class="d-accent-stroke" stroke-width="1.25" stroke-dasharray="4 4" marker-end="url(#lp-arrow)"/>
+  <text x="620" y="296" font-size="11.5" class="d-ink">logicalParentUuid</text>
+  <text x="620" y="312" font-size="11.5" class="d-quiet">the way back</text>
+</svg></div>
+<figcaption>A transcript before and after <code>/compact</code> · two roots<span class="narrow-only"> (scroll sideways for the whole drawing)</span></figcaption>
+</figure>
+<p>The dashed line is the only link from the new root back to the old records.</p>
+<p>A first compaction writes two records and changes none. First a <code>compact_boundary</code> record whose <code>parentUuid</code> is <code>null</code>, so the file now holds two trees. Then the summary, as a <code>user</code> record below the boundary.</p>
+<p>The boundary carries the way back and a receipt. <code>logicalParentUuid</code> names the last record before it. <code>compactMetadata</code> gives the trigger (<code>manual</code> in every run we made), the token count before and after (39,557 and 2,676 in one of our runs on 2.1.300), and which recent messages were kept verbatim. The model then carries on from the summary and that kept tail, as the summary's own wrapper says; everything before the boundary stays in the file.</p>
+
+<h2 id="cut-off">Why the history looks cut off after compaction</h2>
+<p>A transcript is a tree. Each record names its parent in <code>parentUuid</code>, and the conversation is one path through the tree, from the first prompt to the last record.</p>
+<p>Compaction appends a <code>compact_boundary</code> record whose <code>parentUuid</code> is <code>null</code>, which makes it a new root, and hangs the summary below it. The conversation continues from the summary. The old records keep their original parents: 818 of 818 across 5 boundaries in our September runs.</p>
+<p>So a reader that climbs <code>parentUuid</code> from the end of the file stops at the boundary, as if the session had begun there. The way back is a different field: the boundary's <code>logicalParentUuid</code> names the last record before it. In sessions from the terminal interface, the earlier history hangs off <code>compactMetadata.preservedSegment.headUuid</code> instead. A reader has to follow that field to cross.</p>
+<p>Two more traps, both measured on our test sessions:</p>
+<ul>
+<li><strong>The same record can be written twice.</strong> Just before every manual <code>/compact</code> after the first, Claude Code writes again the history that the earlier compactions summarized: the same uuids, with some fields changed. Count each uuid once, at its first copy.</li>
+<li><strong>Claude Code's own interface cannot reach behind a boundary.</strong> On 2.1.270 the rewind list said "Nothing to rewind to yet", <code>--resume-session-at</code> refused a record from before the compaction, and <code>--fork-session</code> copied only what came after it.</li>
+</ul>
+
+<h2 id="summary">What the summary says, and what it gets wrong</h2>
+<p>The summary is written into the transcript as a <code>user</code> record marked <code>isCompactSummary</code>, wrapped in fixed text from Claude Code. On 2.1.300 the wrapper reads, in order:</p>
+<ol class="wrapper">
+<li>"This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation."</li>
+<li>The summary itself.</li>
+<li>"If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: &lt;the transcript's path&gt;"</li>
+<li>"Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened."</li>
+<li>"The messages after this summary are the most recent messages from before compaction, kept verbatim. The summary was written without seeing them, so something it says has not happened yet may already have happened in them."</li>
+</ol>
+<p>The first sentence gives a cause that can be false. Every summary we have opens with "ran out of context", including manual compactions at 7,116 tokens (2.1.272) and at about 40,000 (2.1.300), when nothing had run out.</p>
+<p>On 2.1.272 the summary also quoted Claude Code's own summarizing instruction as if the user had typed it. On 2.1.300, Sonnet 5.5's summary did the same: "That message also asked for this summary, in text only with no tool calls." And the wrapper's third part is the most useful line in the record: it tells the model where the full history still is.</p>
+
+<h2 id="what-the-model-knows">What the model still knows after compaction</h2>
+<p>It depends on the model that writes the summary, which is the session's own. The /compact call's usage report named only Haiku 5.5 in the Haiku sessions, Opus 5.5 (beside a 23-token Haiku call) in the Opus one, and Sonnet 5.5 (beside a 254-token Haiku call) in the Sonnet one. We planted 14 invented details, ran <code>/compact</code>, and asked for all 14: first from memory, then by reading the transcript the summary names.</p>
+<div class="scroll">
+<table class="measures">
+<thead><tr><th scope="col">Session (Claude Code 2.1.300)</th><th scope="col">Last message before <code>/compact</code></th><th scope="col">Body of the summary</th><th scope="col">Details in the summary</th><th scope="col">Answered from memory</th><th scope="col">Found by reading the file</th></tr></thead>
+<tbody>
+<tr><td>Opus 5.5</td><td>"Explain in about 400 words how an LRU cache decides what to evict."</td><td>a structured summary of the session, 5,748 characters</td><td>14 of 14</td><td>14 of 14</td><td>14 of 14</td></tr>
+<tr><td>Sonnet 5.5</td><td>the same question</td><td>a structured summary of the session, 3,462 characters</td><td>14 of 14</td><td>14 of 14</td><td>14 of 14</td></tr>
+<tr><td>Haiku 5.5, run A</td><td>the same question</td><td>a new explanation of LRU caches</td><td>0 of 14</td><td>0 of 14 ("unknown" each time)</td><td>4 of 14 (read 26 of 131 lines)</td></tr>
+<tr><td>Haiku 5.5, run B</td><td>"Four more for later: … Reply with exactly: noted."</td><td>"noted."</td><td>0 of 14</td><td>0 of 14 ("unknown" each time)</td><td>6 of 14 (read 7 of 129 lines)</td></tr>
+<tr><td>Haiku 5.5, one earlier run</td><td>"What word did I ask you to remember? One word."</td><td>"The word is PELICAN."</td><td>the one word asked for</td><td>recalled</td><td>not asked</td></tr>
+</tbody>
+</table>
+</div>
+<p>On Opus and on Sonnet the summary kept every detail, even six the user never asked it to keep: they sat in a build log pasted only for a one-line diagnosis. On Haiku, three times out of three, the "summary" was a reply to the last message before <code>/compact</code>. Our reading, not measured: that reply is kept verbatim after the summary, which "was written without seeing" it, so the summarizer met an open question and answered it.</p>
+<p>Two things held throughout. The model did not invent: asked from memory, Haiku said "unknown" for all 14. And the file held all 14 in every run. Reading it raw was slow going on Haiku, which stopped at line 7 of 129 because "the remaining lines are too large for the Read tool to return".</p>
+
+<h2 id="retrieval">Retrieval, from the computer-science side</h2>
+<p>A summary is a lossy encoding of the conversation, and nothing downstream can put back what it left out. In information-theory terms, no processing of the summary can add information about the original (the data-processing inequality). Whatever the model does next, it cannot know what the summary does not say.</p>
+<p>The loss is also decided at the wrong time. A summary is written before anyone knows the next question, so it has to guess what will matter; but relevance belongs to the question, not to the text. Keeping the raw record moves that decision to read time, when the question is known.</p>
+<p>That is why the append-only file matters. It is the one complete copy, and compaction leaves it whole. The open problem is not loss but access: finding the few lines that answer a question among hundreds of long records.</p>
+
+<h2 id="keep-and-get-back">How to keep your history and get details back</h2>
+<ul>
+<li><strong>Keep the file past 30 days.</strong> Raise <code>cleanupPeriodDays</code> in <code>~/.claude/settings.json</code> (the minimum is 1), or copy the files somewhere the cleanup does not reach. Raising it does not bring back files already deleted.</li>
+<li><strong>When the model says it does not know, point it at the file.</strong> The summary names the transcript's path, and the file still held all 14 details in every run.</li>
+<li><strong>Give it an index, not the raw file.</strong> One line of a transcript can be a very long JSON record, and a file reader stalls on those. <a href="https://github.com/memobrain-app/memobrain">memobrain</a>, our free, open-source tool, prints one short line per turn and tool call with the line number where it is written: <code>npx memobrain skeleton &lt;file.jsonl&gt;</code>. Then read just the lines that matter: <code>sed -n 22p &lt;file.jsonl&gt;</code>.</li>
+<li><strong>Read across the boundary in your own scripts.</strong> At each <code>compact_boundary</code>, continue from <code>logicalParentUuid</code> (or <code>compactMetadata.preservedSegment.headUuid</code>), and count each uuid once, at its first copy.</li>
+<li><strong>Know which model writes the summary.</strong> In our runs, one session each on Opus 5.5 and Sonnet 5.5 kept every detail through compaction, and sessions on Haiku 5.5 kept none.</li>
+</ul>
+
+<h2 id="faq">Questions people ask</h2>
+<h3>Does <code>/compact</code> delete my conversation?</h3>
+<p>No. It replaces the model's context with a summary and appends two records to the transcript. Every earlier record stays in the file (measured on 2.1.270 and 2.1.300).</p>
+<h3>Where does Claude Code store conversation history?</h3>
+<p>On your machine, in <code>~/.claude/projects/&lt;project&gt;/&lt;session id&gt;.jsonl</code>, one JSON record per line. A subagent's work goes under <code>&lt;session id&gt;/subagents/</code>.</p>
+<h3>Why does Claude Code forget things after compacting?</h3>
+<p>The model carries on from the summary, not from the file, so whatever the summary leaves out is gone from its context. In our test, Opus 5.5 and Sonnet 5.5 kept all 14 planted details, and Haiku 5.5 kept none.</p>
+<h3>Can I get back what was compacted?</h3>
+<p>Yes, from the file. The summary itself names the transcript's path, so the model can read it when you ask. An index such as <a href="https://github.com/memobrain-app/memobrain">memobrain</a> finds the lines that matter.</p>
+<h3>Does Claude Code delete old conversations?</h3>
+<p>Yes, after 30 days by default. Compaction does not delete them, but the cleanup removes transcripts older than <code>cleanupPeriodDays</code>.</p>
+
+<h2 id="how-we-measured">How we measured</h2>
+<p>Every claim about compaction here comes from throwaway sessions with invented content, run on our own machine: headless (<code>claude -p</code>), with <code>--resume</code> for each later turn and for <code>/compact</code>. In the October 18 runs, no tools were allowed until the last question, which allowed only the file reader.</p>
+<div class="scroll">
+<table class="runs">
+<thead><tr><th scope="col">Date</th><th scope="col">Claude Code</th><th scope="col">Sessions</th><th scope="col">What we measured</th></tr></thead>
+<tbody>
+<tr><td>2026-10-18</td><td>2.1.300</td><td>2 on Haiku 5.5, 1 on Opus 5.5, 1 on Sonnet 5.5</td><td>14 planted details: in the summary, from memory, from the file</td></tr>
+<tr><td>2026-10-18</td><td>2.1.300</td><td>228 sessions we had kept copies of</td><td>which transcripts the 30-day cleanup had removed from the folder</td></tr>
+<tr><td>2026-10-17</td><td>2.1.300</td><td>1 on Haiku 5.5</td><td>the file stays a prefix of itself; the boundary; the summary's wrapper</td></tr>
+<tr><td>2026-09-30</td><td>2.1.272</td><td>3 on Haiku</td><td>how <code>/compact</code> can be started; the records it writes; what the summary says</td></tr>
+<tr><td>2026-09-15</td><td>2.1.270</td><td>6 probes and 1 Haiku session</td><td>append-only, by snapshots and by system-call traces; what the interface can reach</td></tr>
+</tbody>
+</table>
+</div>
+<p>Not tested: automatic compaction at the context limit, <code>/compact</code> with instructions, sessions with tool calls before the compaction, and more than one run on Opus or on Sonnet. The reason for the Haiku summaries is our guess, not a measurement.</p>
+</article>
+<footer>
+<p><a href="https://github.com/memobrain-app/memobrain">memobrain</a> reads Claude Code transcripts across their compactions and prints an index of them. It is free and open source, under the MIT license.</p>
+</footer>
+</div>
+</body>
+</html>

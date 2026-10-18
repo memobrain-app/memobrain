@@ -2,6 +2,8 @@
 
 When a Claude Code session fills its context window, or on `/compact`, Claude Code compacts it: the conversation in the model's context is replaced by a summary, and the model carries on from the summary. The details, such as which commands ran, which of them failed and which files were read or changed, are no longer in front of the model. They are still on disk. Claude Code only ever appends to a session's transcript, the `.jsonl` file under `~/.claude/projects/`: a compaction adds a boundary record and the summary, and every record before them stays where it was. The summary itself gives the transcript's path, so the details can be read back from it. (Claude Code deletes old transcripts after 30 days by default; its `cleanupPeriodDays` setting changes that.)
 
+What compaction writes, and what each model keeps through it, measured: [Claude Code's compaction doesn't delete your history. It re-roots it.](https://memobrain-app.github.io/memobrain/compaction.html)
+
 memobrain reads that transcript, across its compactions, and prints an index of it without its content: one JSON line per turn and per tool call. A turn's line gives the address of its prompt, the line of the file where it is written. A tool call's line gives the addresses of the call and of its result, and hashes of what went in and what came out. On the 2,539 transcripts it was tested on (3.35 GB), the index came to 0.7 % of their size, so it fits in a context window where the transcript does not, and every address leads back to the line to read.
 
 ## Install
