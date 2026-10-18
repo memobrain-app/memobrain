@@ -6,6 +6,8 @@ What compaction writes, and what each model keeps through it, measured: [Claude 
 
 memobrain reads that transcript, across its compactions, and prints an index of it without its content: one JSON line per turn and per tool call. A turn's line gives the address of its prompt, the line of the file where it is written. A tool call's line gives the addresses of the call and of its result, and hashes of what went in and what came out. On the 2,539 transcripts it was tested on (3.35 GB), the index came to 0.7 % of their size, so it fits in a context window where the transcript does not, and every address leads back to the line to read.
 
+memobrain is an independent project. It is not affiliated with or endorsed by Anthropic.
+
 ## Install
 
 Needs Node.js 20 or newer. No dependencies.
